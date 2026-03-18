@@ -256,20 +256,109 @@ body {
   font-family: var(--font);
 }
 .search-box input::placeholder { color: var(--slate-400); }
-.filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.filter-select {
+.filter-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ── Multi-select Dropdown (mdd) ── */
+.mdd-wrap {
+  position: relative;
+}
+.mdd-btn {
+  display: inline-flex; align-items: center; gap: 6px;
   border: 1.5px solid var(--slate-200);
   background: var(--slate-50);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   font-size: .82rem;
   color: var(--slate-700);
   cursor: pointer;
-  outline: none;
   font-family: var(--font);
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), background var(--transition);
+  white-space: nowrap;
+  min-width: 110px;
 }
-.filter-select:focus { border-color: var(--teal-500); }
+.mdd-btn:hover { border-color: var(--teal-500); background: var(--teal-100); color: var(--teal-500); }
+.mdd-btn.active { border-color: var(--teal-500); background: var(--teal-100); color: var(--teal-500); }
+.mdd-btn .mdd-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--teal-500); color: #fff;
+  border-radius: 10px; font-size: .68rem; font-weight: 700;
+  min-width: 18px; height: 18px; padding: 0 4px;
+}
+.mdd-arrow { font-size: .65rem; margin-left: 2px; transition: transform var(--transition); }
+.mdd-btn.open .mdd-arrow { transform: rotate(180deg); }
+
+.mdd-dropdown {
+  position: absolute; top: calc(100% + 5px); left: 0;
+  background: #fff;
+  border: 1px solid var(--slate-200);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 300;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 8px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.mdd-search-wrap {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--slate-100);
+  margin-bottom: 4px;
+}
+.mdd-search-wrap i { color: var(--slate-400); font-size: .78rem; }
+.mdd-search {
+  border: none; outline: none; background: transparent;
+  font-size: .82rem; color: var(--slate-700);
+  font-family: var(--font); width: 100%;
+}
+.mdd-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: .82rem; color: var(--slate-700);
+  user-select: none;
+  transition: background var(--transition);
+}
+.mdd-item:hover { background: var(--slate-50); }
+.mdd-item input[type="checkbox"] { cursor: pointer; accent-color: var(--teal-500); width: 14px; height: 14px; }
+.mdd-all {
+  border-bottom: 1px solid var(--slate-100);
+  margin-bottom: 4px; padding-bottom: 8px;
+  font-weight: 600; color: var(--slate-600);
+}
+.mdd-item.hidden-item { display: none; }
+
+/* ── Active Filters Bar ── */
+.active-filters-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--teal-100);
+  border: 1px solid var(--teal-500);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: .82rem;
+}
+.af-label { color: var(--teal-500); font-weight: 600; white-space: nowrap; }
+.af-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.af-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fff; border: 1px solid var(--teal-500);
+  color: var(--teal-500); border-radius: 20px;
+  padding: 2px 8px; font-size: .75rem; font-weight: 600;
+  cursor: pointer; transition: background var(--transition);
+}
+.af-chip:hover { background: var(--teal-500); color: #fff; }
+.af-chip i { font-size: .65rem; }
+.af-clear {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--teal-500);
+  color: var(--teal-500); border-radius: 6px;
+  padding: 3px 10px; font-size: .78rem; font-weight: 600;
+  cursor: pointer; transition: background var(--transition);
+  margin-left: auto;
+}
+.af-clear:hover { background: var(--teal-500); color: #fff; }
+
 .action-group { display: flex; gap: 8px; margin-left: auto; }
 .btn-action {
   display: inline-flex; align-items: center; gap: 6px;

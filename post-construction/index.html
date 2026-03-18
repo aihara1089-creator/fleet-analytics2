@@ -221,29 +221,89 @@
       <input type="text" id="searchInput" placeholder="船主・管理会社・造船所・IMO番号で検索…" />
     </div>
     <div class="filter-group">
-      <select id="filterManager" class="filter-select">
-        <option value="">すべての管理会社</option>
-      </select>
-      <select id="filterConnection" class="filter-select">
-        <option value="">すべての接続方法</option>
-      </select>
-      <select id="filterWindows" class="filter-select">
-        <option value="">すべてのWindows Ver.</option>
-      </select>
-      <select id="filterYear" class="filter-select">
-        <option value="">すべての搭載年</option>
-      </select>
-      <select id="filterVdr" class="filter-select">
-        <option value="">VDR（すべて）</option>
-        <option value="yes">VDR あり</option>
-        <option value="no">VDR なし</option>
-      </select>
+      <!-- 管理会社 -->
+      <div class="mdd-wrap" id="mddManager">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddManagerLabel">管理会社</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddManagerMenu">
+          <div class="mdd-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" />
+          </div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddManagerList"></div>
+        </div>
+      </div>
+      <!-- 接続方法 -->
+      <div class="mdd-wrap" id="mddConnection">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddConnectionLabel">接続方法</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddConnectionMenu">
+          <div class="mdd-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" />
+          </div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddConnectionList"></div>
+        </div>
+      </div>
+      <!-- Windows Ver. -->
+      <div class="mdd-wrap" id="mddWindows">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddWindowsLabel">Windows Ver.</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddWindowsMenu">
+          <div class="mdd-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" />
+          </div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddWindowsList"></div>
+        </div>
+      </div>
+      <!-- 搭載年 -->
+      <div class="mdd-wrap" id="mddYear">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddYearLabel">搭載年</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddYearMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddYearList"></div>
+        </div>
+      </div>
+      <!-- VDR -->
+      <div class="mdd-wrap" id="mddVdr">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddVdrLabel">VDR</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddVdrMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて（全件）</label>
+          <div class="mdd-list" id="mddVdrList">
+            <label class="mdd-item"><input type="checkbox" value="yes" /> VDR あり</label>
+            <label class="mdd-item"><input type="checkbox" value="no"  /> VDR なし</label>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="action-group">
       <button class="btn-action" id="btnExport"><i class="fas fa-download"></i> エクスポート</button>
       <button class="btn-action btn-secondary" id="btnReset"><i class="fas fa-redo"></i> リセット</button>
     </div>
   </section>
+
+  <!-- Active filter chips bar -->
+  <div class="active-filters-bar hidden" id="activeFiltersBar">
+    <span class="af-label"><i class="fas fa-filter"></i> 絞込中：</span>
+    <div class="af-chips" id="afChips"></div>
+    <button class="af-clear" id="afClearAll"><i class="fas fa-times"></i> すべて解除</button>
+  </div>
 
   <!-- Table -->
   <section class="table-section">

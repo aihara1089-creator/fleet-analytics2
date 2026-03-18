@@ -161,6 +161,15 @@ let keyMap      = {};
 // Selected vessel names for filter (empty Set = all pass)
 let selectedVesselNames = new Set();
 
+// Multi-select filter state (empty Set = all pass)
+const filterState = {
+  manager:    new Set(),
+  connection: new Set(),
+  windows:    new Set(),
+  year:       new Set(),
+  vdr:        new Set(),   // values: 'yes' | 'no'
+};
+
 // ============================================================
 // UTILITIES
 // ============================================================
@@ -431,23 +440,224 @@ function renderCharts(stats) {
 }
 
 // ============================================================
-// FILTER DROPDOWNS
+// FILTER DROPDOWNS  (multi-select custom dropdown)
 // ============================================================
+
+/**
+ * MDD の設定テーブル
+ * id        : mdd-wrap の id
+ * stateKey  : filterState のキー
+ * labelId   : ボタン内ラベルの id
+ * listId    : チェックボックスリストの id
+ * menuId    : ドロップダウン div の id
+ * allLabel  : 「すべて」時のボタンラベル
+ * hasSearch : 検索ボックスを持つか
+ * fixed     : 固定選択肢（null なら動的生成）
+ */
+const MDD_DEFS = [
+  { id:'mddManager',    stateKey:'manager',    labelId:'mddManagerLabel',    listId:'mddManagerList',    menuId:'mddManagerMenu',    allLabel:'管理会社',      hasSearch:true,  fixed:null },
+  { id:'mddConnection', stateKey:'connection', labelId:'mddConnectionLabel', listId:'mddConnectionList', menuId:'mddConnectionMenu', allLabel:'接続方法',      hasSearch:true,  fixed:null },
+  { id:'mddWindows',    stateKey:'windows',    labelId:'mddWindowsLabel',    listId:'mddWindowsList',    menuId:'mddWindowsMenu',    allLabel:'Windows Ver.', hasSearch:true,  fixed:null },
+  { id:'mddYear',       stateKey:'year',       labelId:'mddYearLabel',       listId:'mddYearList',       menuId:'mddYearMenu',       allLabel:'搭載年',        hasSearch:false, fixed:null },
+  { id:'mddVdr',        stateKey:'vdr',        labelId:'mddVdrLabel',        listId:'mddVdrList',        menuId:'mddVdrMenu',        allLabel:'VDR',           hasSearch:false,
+    fixed:[ {value:'yes', label:'VDR あり'}, {value:'no', label:'VDR なし'} ] },
+];
+
+/** ドロップダウンのラベルとバッジを更新 */
+function updateMddLabel(def) {
+  const sel   = filterState[def.stateKey];
+  const btn   = document.getElementById(def.id).querySelector('.mdd-btn');
+  const label = document.getElementById(def.labelId);
+  // 既存バッジ削除
+  btn.querySelectorAll('.mdd-badge').forEach(b => b.remove());
+
+  if (sel.size === 0) {
+    label.textContent = def.allLabel;
+    btn.classList.remove('active');
+  } else {
+    label.textContent = def.allLabel;
+    const badge = document.createElement('span');
+    badge.className = 'mdd-badge';
+    badge.textContent = sel.size;
+    btn.appendChild(badge);
+    btn.classList.add('active');
+  }
+}
+
+/** チェックボックスの checked 状態を filterState に同期し直す */
+function syncMddCheckboxes(def) {
+  const sel  = filterState[def.stateKey];
+  const list = document.getElementById(def.listId);
+  const allCb = document.getElementById(def.menuId).querySelector('.mdd-all input');
+
+  list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = sel.size === 0 || sel.has(cb.value);
+  });
+  if (allCb) allCb.checked = sel.size === 0;
+}
+
+/** チェックボックス変更時のハンドラを構築 */
+function buildMddEvents(def) {
+  const menuEl = document.getElementById(def.menuId);
+  const listEl = document.getElementById(def.listId);
+  const allCb  = menuEl.querySelector('.mdd-all input');
+
+  // 「すべて選択」チェックボックス
+  if (allCb) {
+    allCb.addEventListener('change', () => {
+      filterState[def.stateKey].clear();
+      listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+      allCb.checked = true;
+      updateMddLabel(def);
+      applyFilters();
+    });
+  }
+
+  // 各選択肢
+  listEl.addEventListener('change', e => {
+    const cb = e.target;
+    if (cb.type !== 'checkbox') return;
+    const val = cb.value;
+    const sel = filterState[def.stateKey];
+
+    if (cb.checked) {
+      sel.add(val);
+    } else {
+      sel.delete(val);
+    }
+    // 全部チェックされていたら「すべて」扱いにして Set クリア
+    const allItems = [...listEl.querySelectorAll('input[type="checkbox"]')];
+    if (allItems.every(c => c.checked)) {
+      sel.clear();
+    }
+    syncMddCheckboxes(def);
+    updateMddLabel(def);
+    applyFilters();
+  });
+
+  // 検索ボックス
+  if (def.hasSearch) {
+    const searchInput = menuEl.querySelector('.mdd-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.toLowerCase();
+        listEl.querySelectorAll('.mdd-item').forEach(item => {
+          const txt = item.textContent.toLowerCase();
+          item.classList.toggle('hidden-item', q !== '' && !txt.includes(q));
+        });
+      });
+    }
+  }
+}
+
+/** 動的オプションをリストに追加 */
+function populateMddList(def, values) {
+  const listEl = document.getElementById(def.listId);
+  if (def.fixed) {
+    // 固定選択肢はHTMLに既にある（VDR等）。チェック状態だけ同期
+    syncMddCheckboxes(def);
+    buildMddEvents(def);
+    return;
+  }
+  listEl.innerHTML = values.map(v =>
+    `<label class="mdd-item"><input type="checkbox" value="${v.replace(/"/g,'&quot;')}" />${v}</label>`
+  ).join('');
+  syncMddCheckboxes(def);
+  buildMddEvents(def);
+}
+
+/** ドロップダウンの開閉トグル（グローバルで1つだけ開く） */
+function setupMddToggles() {
+  MDD_DEFS.forEach(def => {
+    const wrap = document.getElementById(def.id);
+    const btn  = wrap.querySelector('.mdd-btn');
+    const menu = document.getElementById(def.menuId);
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = !menu.classList.contains('hidden');
+      // 全部閉じる
+      MDD_DEFS.forEach(d => {
+        document.getElementById(d.menuId).classList.add('hidden');
+        document.getElementById(d.id).querySelector('.mdd-btn').classList.remove('open');
+      });
+      if (!isOpen) {
+        menu.classList.remove('hidden');
+        btn.classList.add('open');
+      }
+    });
+  });
+  // 外クリックで閉じる
+  document.addEventListener('click', () => {
+    MDD_DEFS.forEach(d => {
+      document.getElementById(d.menuId).classList.add('hidden');
+      document.getElementById(d.id).querySelector('.mdd-btn').classList.remove('open');
+    });
+  });
+  document.querySelectorAll('.mdd-dropdown').forEach(el => {
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+}
+
 function buildFilters(rows) {
   const managers    = [...new Set(rows.map(r=>get(r,COL.MANAGER)).filter(Boolean))].sort();
   const connections = [...new Set(rows.map(r=>get(r,COL.CONNECTION)).filter(v=>v&&v!=='-'))].sort();
   const windows     = [...new Set(rows.map(r=>get(r,COL.WINDOWS)).filter(Boolean))].sort();
-  const years       = [...new Set(rows.map(r=>r._installDate?r._installDate.getFullYear():null).filter(Boolean))].sort();
+  const years       = [...new Set(rows.map(r=>r._installDate?r._installDate.getFullYear():null).filter(Boolean))].sort((a,b)=>b-a);
 
-  document.getElementById('filterManager').innerHTML =
-    '<option value="">すべての管理会社</option>' + managers.map(v=>`<option>${v}</option>`).join('');
-  document.getElementById('filterConnection').innerHTML =
-    '<option value="">すべての接続方法</option>' + connections.map(v=>`<option>${v}</option>`).join('');
-  document.getElementById('filterWindows').innerHTML =
-    '<option value="">すべてのWindows Ver.</option>' + windows.map(v=>`<option>${v}</option>`).join('');
-  document.getElementById('filterYear').innerHTML =
-    '<option value="">すべての搭載年</option>' + years.map(v=>`<option>${v}</option>`).join('');
+  populateMddList(MDD_DEFS[0], managers);
+  populateMddList(MDD_DEFS[1], connections);
+  populateMddList(MDD_DEFS[2], windows);
+  populateMddList(MDD_DEFS[3], years.map(String));
+  populateMddList(MDD_DEFS[4], []); // VDR は固定
+
+  setupMddToggles();
 }
+
+/** アクティブフィルターバーを更新 */
+function renderActiveFiltersBar() {
+  const bar    = document.getElementById('activeFiltersBar');
+  const chips  = document.getElementById('afChips');
+
+  const labelMap = {
+    manager:    '管理会社',
+    connection: '接続方法',
+    windows:    'Win',
+    year:       '年',
+    vdr:        'VDR',
+  };
+  const vdrLabel = { yes: 'あり', no: 'なし' };
+
+  let html = '';
+  let any  = false;
+
+  MDD_DEFS.forEach(def => {
+    const sel = filterState[def.stateKey];
+    if (sel.size === 0) return;
+    any = true;
+    [...sel].forEach(v => {
+      const disp = def.stateKey === 'vdr' ? vdrLabel[v] || v : v;
+      html += `<span class="af-chip" data-key="${def.stateKey}" data-val="${v}">
+        ${labelMap[def.stateKey]}: ${disp} <i class="fas fa-times"></i>
+      </span>`;
+    });
+  });
+
+  chips.innerHTML = html;
+  bar.classList.toggle('hidden', !any);
+
+  chips.querySelectorAll('.af-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const key = chip.dataset.key;
+      const val = chip.dataset.val;
+      filterState[key].delete(val);
+      const def = MDD_DEFS.find(d => d.stateKey === key);
+      if (def) { syncMddCheckboxes(def); updateMddLabel(def); }
+      applyFilters();
+    });
+  });
+}
+
+
 
 // ============================================================
 // TABLE
@@ -519,11 +729,7 @@ function renderTable(nameFilteredCount) {
   const hasNameFilter  = selectedVesselNames.size > 0;
   const hasOtherFilter = !!(
     document.getElementById('searchInput').value ||
-    document.getElementById('filterManager').value ||
-    document.getElementById('filterConnection').value ||
-    document.getElementById('filterWindows').value ||
-    document.getElementById('filterYear').value ||
-    document.getElementById('filterVdr').value
+    Object.values(filterState).some(s => s.size > 0)
   );
   const anyFilter = hasNameFilter || hasOtherFilter;
 
@@ -621,11 +827,11 @@ function applySort() {
 
 function applyFilters() {
   const q    = document.getElementById('searchInput').value.toLowerCase();
-  const mgr  = document.getElementById('filterManager').value;
-  const conn = document.getElementById('filterConnection').value;
-  const win  = document.getElementById('filterWindows').value;
-  const year = document.getElementById('filterYear').value;
-  const vdr  = document.getElementById('filterVdr').value;
+  const mgrs = filterState.manager;
+  const conns= filterState.connection;
+  const wins = filterState.windows;
+  const years= filterState.year;
+  const vdrs = filterState.vdr;
 
   // ── 船名フィルター通過数（他フィルター適用前）
   const nameFilteredCount = selectedVesselNames.size > 0
@@ -660,18 +866,27 @@ function applyFilters() {
       ];
       if(!searchFields.some(v=>(v||'').toLowerCase().includes(q))) return false;
     }
-    if(mgr  && get(r,COL.MANAGER)!==mgr)    return false;
-    if(conn && get(r,COL.CONNECTION)!==conn) return false;
-    if(win  && get(r,COL.WINDOWS)!==win)     return false;
-    if(year && (!r._installDate || String(r._installDate.getFullYear())!==year)) return false;
-    if(vdr==='yes' && !hasVdr(r))    return false;
-    if(vdr==='no'  && hasVdr(r))     return false;
+    // 複数選択フィルター（Set が空 = 全通過）
+    if(mgrs.size  && !mgrs.has(get(r,COL.MANAGER)))   return false;
+    if(conns.size && !conns.has(get(r,COL.CONNECTION)))return false;
+    if(wins.size  && !wins.has(get(r,COL.WINDOWS)))    return false;
+    if(years.size){
+      const yr = r._installDate ? String(r._installDate.getFullYear()) : '';
+      if(!years.has(yr)) return false;
+    }
+    if(vdrs.size){
+      const hasV = hasVdr(r);
+      if(vdrs.has('yes') && vdrs.has('no')) { /* 両方選択 = 全通過 */ }
+      else if(vdrs.has('yes') && !hasV) return false;
+      else if(vdrs.has('no')  &&  hasV) return false;
+    }
     return true;
   });
   applySort();
   currentPage=1;
   renderTable(nameFilteredCount);
   renderVnpSelectedBar();
+  renderActiveFiltersBar();
 }
 
 // ============================================================
@@ -1017,6 +1232,10 @@ function loadData(csvText) {
     if(!allData.length){ toast('データが見つかりませんでした','error'); return; }
 
     filtered = [...allData];
+    // フィルター状態をリセット
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+    selectedVesselNames.clear();
+
     const stats = analyzeData(allData);
 
     document.getElementById('uploadSection').classList.add('hidden');
@@ -1028,6 +1247,7 @@ function loadData(csvText) {
     buildColToggle();
     buildVnpChips();
     renderVnpSelectedBar();
+    renderActiveFiltersBar();
 
     sortKey=COL.INSTALL_DATE; sortDir=-1;
     applySort();
@@ -1070,20 +1290,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Sample
   document.getElementById('btnSample').addEventListener('click', loadSampleData);
 
-  // Filters
-  ['searchInput','filterManager','filterConnection','filterWindows','filterYear','filterVdr'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.addEventListener('input',applyFilters);
-    el.addEventListener('change',applyFilters);
+  // Search input
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+  // Active filter bar: "すべて解除" button
+  document.getElementById('afClearAll').addEventListener('click', () => {
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+    MDD_DEFS.forEach(def => { syncMddCheckboxes(def); updateMddLabel(def); });
+    applyFilters();
   });
 
   // Export
   document.getElementById('btnExport').addEventListener('click', exportCSV);
 
-  // Reset（船名フィルターも含めてリセット）
+  // Reset（全フィルター・船名フィルターも含めてリセット）
   document.getElementById('btnReset').addEventListener('click',()=>{
-    ['searchInput','filterManager','filterConnection','filterWindows','filterYear','filterVdr']
-      .forEach(id=>{ document.getElementById(id).value=''; });
+    document.getElementById('searchInput').value = '';
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+    MDD_DEFS.forEach(def => { syncMddCheckboxes(def); updateMddLabel(def); });
     selectedVesselNames.clear();
     document.getElementById('vnpPasteArea').value = '';
     document.getElementById('vnpPasteHint').textContent = '';
@@ -1150,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('csvInput').value='';
     allData=[]; filtered=[];
     selectedVesselNames.clear();
+    Object.keys(filterState).forEach(k => filterState[k].clear());
     Object.values(charts).forEach(c=>c.destroy()); charts={};
   });
 
