@@ -4,6 +4,78 @@
 'use strict';
 
 // ============================================================
+// MANAGED VESSEL NAME LIST（定義済み船名リスト）
+// ============================================================
+const MANAGED_VESSEL_NAMES = [
+  'MAULOA','C.S. COSMOS','ANGELITE ACE','CAELUM ACE','LAZULITE ACE',
+  'ENERGIA GRANDEUR','REKINDLE','PEGASUS ACE','WORLD SPIRIT','ASTRAL ACE',
+  'BRAVERY ACE','FRONTIER ACE','TRIUMPH ACE','MERIDIAN ACE','MORNING CREST',
+  'HEROIC ACE','SPLENDID ACE','PROMINENT ACE','ENERGY ADVANCE','MARVELOUS ACE',
+  'MIRACULOUS ACE','EMINENT ACE','EUPHONY ACE','PARADISE ACE','LIBERTY ACE',
+  'FREEDOM ACE','FIRMAMENT ACE','KAIYO','ALBANY PIONEER','MOL CREATION',
+  'MOL CHARISMA','MOL CELEBRATION','MOL COURAGE','BRASIL MARU','KASAGISAN',
+  'WHITE KINGDOM','AURORA LIGHT','KASHIMASAN','MOL EXPLORER','MOL EXPERIENCE',
+  'MOL EARNEST','MOL ENDOWMENT','BAOSTEEL ELABORATION','CHIYOTAMOU','SWALLOW ACE',
+  'SWAN ACE','SWIFT ACE','SUNRISE ACE','SUNSHINE ACE','SUNLIGHT ACE',
+  'SALVIA ACE','ONE COMPETENCE','TUBARAO MARU','SHIZUKISAN','GLOBAL HARMONY',
+  'PRO GRACE','OPERA WHITE','WORLD SWAN II','CHUETSU SPIRIT','SOUTHERN STAR',
+  'PRIMROSE ACE','WISTERIA ACE','YAKUMOSAN','PACIFIC VOYAGER','BAOSTEEL EDUCATION',
+  'SHEARWATER','CRYSTAL PIONEER','STRELITZIA','CLOVER ACE','UNIVERSAL PIONEER',
+  'HK DELIGHT','CATTLEYA','LUNA SPIRIT','ANDROMEDA SPIRIT','SPRING SWEETBRIER',
+  'HAKKAISAN','REIMEI','ORCHID ACE','ATLANTIC PIONEER','AZUMASAN',
+  'AQUAMARINE ACE','AMETHYST ACE','BERGAMOT ACE','MOL PROFICIENCY','HISUI',
+  'LONDON COURAGE','PLEIADES SPIRIT','SANDERLING ACE','MUSANAH','AQUAMARINE PROGRESS',
+  'ONE MAGNIFICENCE','ONE MAJESTY','ONE MATRIX','ONE MAXIM','MARGUERITE ACE',
+  'SUNSHINE EXPRESS','BAOSTEEL EMOTION','TOM PRICE','ONE MARVEL','ONE MOTIVATOR',
+  'ONE MODERN','ONE MANEUVER','ONE MISSION','RUBY ACE','GARNET ACE',
+  'GLOBAL PROSPERITY','AWOBASAN MARU','GREAT PERSEUS','RMC ALTAIR','RMC RIGEL',
+  'GLORIOSA LILY','VENUS SPIRIT','JUPITER SPIRIT','KAZUSA','PHOENIX VIGOR',
+  'IRIS ACE','ENERGY GLORY','RIN YO','VEGA DREAM','HAKUSAN',
+  'OPAL ACE','ONYX ACE','CRYSTAL ACE','EMERALD ACE','DRAGON SKY',
+  'EAGLE SKY','C.S. BRIGHT','CATTLEYA ACE','CARNATION ACE','CENTAURUS DREAM',
+  'PRECIOUS ACE','SOUTHERN CROSS DREAM','MIDNIGHT DREAM','LAMBERT MARU','TRANQUIL ACE',
+  'ELEGANT ACE','GLORIOUS ACE','MERMAID ACE','YOZAN','LIBRA TRADER',
+  'CHOKAISAN','GASSAN','OMEGA TRADER','JASPER DREAM','CAMELLIA DREAM',
+  'SAIYO','PILBARA MARU','NEPTUNE ACE','LILAC VICTORIA','MERCURY ACE',
+  'AZUL HORIZONTE','SHAGANG HAILI','BRILLIANT ACE','GRACIOUS ACE','ETERNAL ACE',
+  'ORE SAO LUIS','ORE SALVADOR','MITAKE','HORAISAN','WATER LILY',
+  'MAGIC VICTORIA','TOHMISAN MARU','MINAMI','ENERGY PROMETHEUS','NEXUS VICTORIA',
+  'SUPREME ACE','VICTORIOUS ACE','GENUINE ACE','VALIANT ACE','DIVINE ACE',
+  'PRIME ACE','LEO SPIRIT','TAIYO','WARRAMBOO','HBIS',
+  'GALAXY ACE','ONE COMMITMENT','ONE CONTRIBUTION','JOZEN','SHOYOH',
+  'REIHOU','TENSO','WISDOM ACE','LNG VENUS','LNG MARS',
+  'AKATSUKI','LNG FUKUROKUJU','SOMA MARU','AZUL BRISA','SHIN YAHAGI MARU',
+  'GREEN SAPPHIRE','HAKUTAKA','BRILLIANT ADVANCE','BRILLIANT DISCOVERY','LNG SATURN',
+  'ORANGE PHOENIX','MANCHAC SUN','CAJUN SUN','DYNA CRANE','NAGARA MARU',
+  'BUCCOO REEF','GRANDE RIVIERE','MAYARO','OI MARU','TARANAKI SUN',
+  'MARVEL EAGLE','MARVEL PELICAN','MEDALTA ADVENTURER','ISLA DE BIOKO','ONE TRIUMPH',
+  'ONE TRUST','ONE TRIBUTE','ONE TRADITION','MARVEL HERON','SHINZAN MARU',
+  'SPRING PASSION','ATAGOSAN','SARAH','LNG SCHNEEWEISSCHEN','ONE TRUTH',
+  'ONE TREASURE','BELUGA ACE','ORCA ACE','WALRUS ACE','KAIROS TRIUMPH',
+  'IRIS TRIUMPH','THEMIS TRIUMPH','MELIA','KIRISHIMA','EAGLE TRADER',
+  'ASIAN PROGRESS VI','SOHSHU MARU','NOHSHU MARU','PULANG TALA','OPALO',
+  'AKAGISAN','TACHIBANA II','SUZUKASAN','PHOENIX JAMNAGAR','PORO NUPURI MARU',
+  'SOUTHERN TREASURE','MAYASAN','PHOENIX GAIA','SOUTHERN HOPE','SILVICULTURE',
+  'ORANGE TRUTH','OCEANIA MARU','ISHIZUCHI II','SPRING LIBERTY','DAISEN',
+  'VANGUARDIA','LNG ROSENROT','GAIL BHUWAN','RYUOHSAN','AZUL HARMONY',
+  'ZUIYO','BRILLIANT MERCURY','KAGAWA MARU','HIKOSAN','MOL HESTIA',
+  'GT ATHENA','GT PERSEPHONE','HYDRANGEA','BLANCO ACE','AZUL COSTA',
+  'AZUL TIERRA','SUNFLOWER KURENAI','SUNFLOWER MURASAKI','PERLAS','ARAW',
+  'GT DEMETER','SPRING CITRUS','AWAJISAN MARU','KUROTAKISAN MARU III','HOKULINK',
+  'CAPILANO SUN','CYPRESS SUN','GRAND SAKURA','KAURI','ASANAGI',
+  'SHOFU MARU','PHOENIX SKY','YUNAGI','ENERGIA AZALEA','MAPUTI',
+  'LAULEA','GT SELENE','PHOENIX HARMONIA','AQUAMARINE PROGRESSⅡ','GAIL URJA',
+  'REX TILLERSON','UMM GHUWAILINA','HLAITAN','LIMAIL','MOL AZURE',
+  'VIANCA','CITRUS TIGER','GREENERGY OCEAN','GREENERGY PEARL','GREENERGY STAR',
+  'GREENERGY MOON','GREENERGY WIND','MARVEL SWALLOW','SUNFLOWER KAMUY','SUNFLOWER PIRKA',
+  'KANOA','SAKURA TIGER','GREEN WINDS','TURQUOISE ACE','ARCHY VANGUARD',
+  'TRINITY ISLAND','CERULEAN ACE','TOURMALINE ACE','PACIFIC ESPERANZA','CELESTE ACE',
+  'PRIMA VERDE','PUWA BITOON','ASIAN PROGRESS VII','ENERGIA VIKING','LAPIS ACE',
+  'VERDE HERALDO','BLUE NEPTUNE','COSMO NOAH','CIELO ACE','RURI OCEAN',
+  'RURI CARE','RURI COURAGE','RURI EARTH','CARNATION ACE MaSSA',
+].map(n => n.trim());
+
+// ============================================================
 // CONSTANTS
 // ============================================================
 const TODAY = new Date();
@@ -84,6 +156,8 @@ let visibleCols = COLUMN_DEFS.filter(c=>c.default).map(c=>c.key);
 let charts      = {};
 // key map: normalized header → original header used in data
 let keyMap      = {};
+// Selected vessel names for filter (empty Set = all pass)
+let selectedVesselNames = new Set();
 
 // ============================================================
 // UTILITIES
@@ -419,7 +493,13 @@ function buildTableRows(rows) {
     }).join('');
     const id = get(r,COL.ID)||'';
     const owner = get(r,COL.OWNER)||'';
-    return `<tr data-id="${id}" data-owner="${owner}">${cells}</tr>`;
+    // Highlight if name-matched
+    const isMatched = selectedVesselNames.size > 0 &&
+      [...selectedVesselNames].some(name =>
+        owner.trim().toUpperCase().includes(name.toUpperCase()) ||
+        name.toUpperCase().includes(owner.trim().toUpperCase())
+      );
+    return `<tr data-id="${id}" data-owner="${owner}"${isMatched?' class="name-matched"':''}>${cells}</tr>`;
   }).join('');
 }
 
@@ -500,6 +580,14 @@ function applyFilters() {
   const vdr  = document.getElementById('filterVdr').value;
 
   filtered = allData.filter(r=>{
+    // Vessel name filter
+    if(selectedVesselNames.size > 0) {
+      const owner = (get(r, COL.OWNER)||'').trim().toUpperCase();
+      const matched = [...selectedVesselNames].some(name =>
+        owner.includes(name.toUpperCase()) || name.toUpperCase().includes(owner)
+      );
+      if(!matched) return false;
+    }
     if(q){
       const searchFields = [
         get(r,COL.OWNER), get(r,COL.MANAGER), get(r,COL.SHIPYARD), get(r,COL.IMO),
@@ -518,6 +606,74 @@ function applyFilters() {
   applySort();
   currentPage=1;
   renderTable();
+  renderVnpSelectedBar();
+}
+
+// ============================================================
+// VESSEL NAME FILTER PANEL
+// ============================================================
+function buildVnpChips() {
+  const wrap  = document.getElementById('vnpChips');
+  const query = (document.getElementById('vnpSearch').value||'').trim().toLowerCase();
+  document.getElementById('vnpTotal').textContent = MANAGED_VESSEL_NAMES.length;
+
+  wrap.innerHTML = MANAGED_VESSEL_NAMES.map(name => {
+    const isActive  = selectedVesselNames.has(name);
+    const isHidden  = query && !name.toLowerCase().includes(query);
+    return `<span class="vnp-chip${isActive?' active':''}${isHidden?' hidden-chip':''}" data-name="${name}">
+      ${isActive?'<i class="fas fa-check"></i>':''}${name}
+    </span>`;
+  }).join('');
+
+  wrap.querySelectorAll('.vnp-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const name = chip.dataset.name;
+      if(selectedVesselNames.has(name)) {
+        selectedVesselNames.delete(name);
+        chip.classList.remove('active');
+        chip.innerHTML = name;
+      } else {
+        selectedVesselNames.add(name);
+        chip.classList.add('active');
+        chip.innerHTML = `<i class="fas fa-check"></i>${name}`;
+      }
+      applyFilters();
+    });
+  });
+}
+
+function renderVnpSelectedBar() {
+  const bar   = document.getElementById('vnpSelectedBar');
+  const text  = document.getElementById('vnpSelectedText');
+  const chips = document.getElementById('vnpSelectedChips');
+
+  if(selectedVesselNames.size === 0) {
+    text.className = '';
+    text.innerHTML = '<i class="fas fa-filter"></i> フィルター未適用（全件表示）';
+    chips.innerHTML = '';
+    return;
+  }
+
+  text.className = 'active';
+  text.innerHTML = `<i class="fas fa-filter"></i> <strong>${selectedVesselNames.size}</strong> 隻でフィルター中`;
+
+  const names = [...selectedVesselNames];
+  const MAX_SHOW = 8;
+  let html = names.slice(0, MAX_SHOW).map(name =>
+    `<span class="vnp-sel-chip" data-name="${name}">${name} <i class="fas fa-times"></i></span>`
+  ).join('');
+  if(names.length > MAX_SHOW) {
+    html += `<span class="vnp-more-chip">他 ${names.length - MAX_SHOW} 隻</span>`;
+  }
+  chips.innerHTML = html;
+
+  chips.querySelectorAll('.vnp-sel-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedVesselNames.delete(chip.dataset.name);
+      buildVnpChips();
+      applyFilters();
+    });
+  });
 }
 
 // ============================================================
@@ -744,6 +900,8 @@ function loadData(csvText) {
     renderCharts(stats);
     buildFilters(allData);
     buildColToggle();
+    buildVnpChips();
+    renderVnpSelectedBar();
 
     sortKey=COL.INSTALL_DATE; sortDir=-1;
     applySort();
@@ -796,12 +954,47 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Export
   document.getElementById('btnExport').addEventListener('click', exportCSV);
 
-  // Reset
+  // Reset（船名フィルターも含めてリセット）
   document.getElementById('btnReset').addEventListener('click',()=>{
     ['searchInput','filterManager','filterConnection','filterWindows','filterYear','filterVdr']
       .forEach(id=>{ document.getElementById(id).value=''; });
+    selectedVesselNames.clear();
+    buildVnpChips();
     applyFilters();
     toast('フィルターをリセットしました','info');
+  });
+
+  // VNP: search input
+  document.getElementById('vnpSearch').addEventListener('input', ()=>{
+    buildVnpChips();
+  });
+  // VNP: clear search
+  document.getElementById('vnpClear').addEventListener('click', ()=>{
+    document.getElementById('vnpSearch').value = '';
+    buildVnpChips();
+  });
+  // VNP: select all (visible chips)
+  document.getElementById('vnpSelectAll').addEventListener('click', ()=>{
+    const q = document.getElementById('vnpSearch').value.toLowerCase();
+    MANAGED_VESSEL_NAMES.forEach(name => {
+      if(!q || name.toLowerCase().includes(q)) selectedVesselNames.add(name);
+    });
+    buildVnpChips();
+    applyFilters();
+  });
+  // VNP: deselect all
+  document.getElementById('vnpSelectNone').addEventListener('click', ()=>{
+    selectedVesselNames.clear();
+    buildVnpChips();
+    applyFilters();
+  });
+  // VNP: toggle chips panel
+  document.getElementById('vnpToggle').addEventListener('click', ()=>{
+    const wrap = document.getElementById('vnpChipsWrap');
+    const chevron = document.getElementById('vnpChevron');
+    wrap.classList.toggle('hidden');
+    chevron.className = wrap.classList.contains('hidden')
+      ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
   });
 
   // Back
@@ -810,6 +1003,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('uploadSection').classList.remove('hidden');
     document.getElementById('csvInput').value='';
     allData=[]; filtered=[];
+    selectedVesselNames.clear();
     Object.values(charts).forEach(c=>c.destroy()); charts={};
   });
 

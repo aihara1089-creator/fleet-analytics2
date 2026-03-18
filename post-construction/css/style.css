@@ -404,6 +404,208 @@ body {
   display: inline-block;
 }
 
+/* ---------- Vessel Name Filter Panel ---------- */
+.vessel-name-panel {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--slate-200);
+  overflow: hidden;
+}
+
+.vnp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid var(--slate-100);
+  background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
+  color: #fff;
+}
+
+.vnp-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .92rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.vnp-title i { color: var(--teal-500); }
+
+.vnp-badge {
+  background: rgba(20,184,166,.2);
+  border: 1px solid rgba(20,184,166,.4);
+  color: var(--teal-500);
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 500;
+}
+.vnp-badge strong { color: #fff; }
+
+.vnp-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vnp-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 200px;
+}
+.vnp-search-wrap i { color: var(--slate-400); font-size: .82rem; }
+.vnp-search-wrap input {
+  border: none; background: transparent; outline: none;
+  font-size: .84rem; color: #fff; width: 100%;
+  font-family: var(--font);
+}
+.vnp-search-wrap input::placeholder { color: var(--slate-400); }
+.vnp-clear {
+  background: none; border: none;
+  color: var(--slate-400); cursor: pointer;
+  padding: 0; font-size: .8rem;
+  transition: color var(--transition);
+  flex-shrink: 0;
+}
+.vnp-clear:hover { color: #fff; }
+
+.vnp-btn-all, .vnp-btn-none, .vnp-btn-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: .78rem; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.vnp-btn-all {
+  background: rgba(20,184,166,.15);
+  border: 1px solid rgba(20,184,166,.4);
+  color: var(--teal-500);
+}
+.vnp-btn-all:hover { background: rgba(20,184,166,.3); }
+.vnp-btn-none {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  color: var(--slate-300);
+}
+.vnp-btn-none:hover { background: rgba(255,255,255,.15); color: #fff; }
+.vnp-btn-toggle {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+}
+.vnp-btn-toggle:hover { background: rgba(255,255,255,.2); }
+
+/* Chips wrap */
+.vnp-chips-wrap {
+  padding: 14px 18px 16px;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-200);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.vnp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vnp-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px 4px 10px;
+  border-radius: 20px;
+  font-size: .76rem; font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+  border: 1.5px solid var(--slate-200);
+  background: #fff;
+  color: var(--slate-600);
+}
+.vnp-chip:hover {
+  border-color: var(--teal-500);
+  color: var(--teal-500);
+  background: var(--teal-100);
+}
+.vnp-chip.active {
+  background: var(--teal-500);
+  border-color: var(--teal-500);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(20,184,166,.3);
+}
+.vnp-chip.active:hover {
+  background: #0e7490;
+  border-color: #0e7490;
+}
+.vnp-chip.hidden-chip { display: none; }
+.vnp-chip i { font-size: .65rem; }
+
+/* Selected bar */
+.vnp-selected-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  flex-wrap: wrap;
+  min-height: 44px;
+  background: #fff;
+}
+#vnpSelectedText {
+  font-size: .78rem;
+  color: var(--slate-500);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#vnpSelectedText i { color: var(--teal-500); }
+#vnpSelectedText.active { color: var(--teal-500); font-weight: 600; }
+
+.vnp-selected-chips {
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.vnp-sel-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--teal-100);
+  border: 1px solid rgba(20,184,166,.3);
+  color: var(--teal-500);
+  padding: 2px 8px 2px 10px;
+  border-radius: 20px;
+  font-size: .73rem; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.vnp-sel-chip:hover { background: var(--teal-500); color: #fff; }
+.vnp-sel-chip i { font-size: .62rem; }
+.vnp-more-chip {
+  background: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  color: var(--slate-500);
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: .73rem; font-weight: 500;
+  cursor: pointer;
+}
+.vnp-more-chip:hover { background: var(--slate-200); }
+
+/* Highlight matched row */
+.vessel-table tbody tr.name-matched {
+  background: rgba(20,184,166,.06);
+}
+.vessel-table tbody tr.name-matched:hover {
+  background: var(--teal-100);
+}
+
 /* Pagination */
 .pagination {
   display: flex; align-items: center; justify-content: center;
