@@ -161,24 +161,53 @@
       <div class="vnp-title">
         <i class="fas fa-list-ul"></i>
         船名フィルター
-        <span class="vnp-badge" id="vnpBadge">管理対象 <strong id="vnpTotal">0</strong> 隻</span>
+        <span class="vnp-badge">管理対象 <strong id="vnpTotal">0</strong> 隻</span>
       </div>
-      <div class="vnp-controls">
-        <div class="vnp-search-wrap">
-          <i class="fas fa-search"></i>
-          <input type="text" id="vnpSearch" placeholder="船名を入力して絞り込み…" autocomplete="off" />
-          <button class="vnp-clear" id="vnpClear" title="クリア"><i class="fas fa-times"></i></button>
-        </div>
-        <button class="vnp-btn-all" id="vnpSelectAll"><i class="fas fa-check-double"></i> 全選択</button>
+      <div class="vnp-header-actions">
         <button class="vnp-btn-none" id="vnpSelectNone"><i class="fas fa-times"></i> 全解除</button>
-        <button class="vnp-btn-toggle" id="vnpToggle"><i class="fas fa-chevron-down" id="vnpChevron"></i> 船名一覧</button>
+        <button class="vnp-btn-toggle" id="vnpToggle">
+          <i class="fas fa-chevron-down" id="vnpChevron"></i> 一覧表示
+        </button>
       </div>
     </div>
-    <!-- Chips area (collapsed by default) -->
-    <div class="vnp-chips-wrap hidden" id="vnpChipsWrap">
-      <div class="vnp-chips" id="vnpChips"></div>
+
+    <!-- Main body: paste area + chips -->
+    <div class="vnp-body">
+      <!-- Left: paste textarea -->
+      <div class="vnp-paste-side">
+        <div class="vnp-paste-label">
+          <i class="fas fa-paste"></i> 船名を貼り付け・入力（改行区切り）
+        </div>
+        <textarea id="vnpPasteArea"
+          placeholder="ここに船名をまとめて貼り付け&#10;例：&#10;PEGASUS ACE&#10;SWALLOW ACE&#10;CATTLEYA ACE&#10;…"
+          rows="7" spellcheck="false"></textarea>
+        <div class="vnp-paste-actions">
+          <button class="vnp-btn-apply" id="vnpApply">
+            <i class="fas fa-filter"></i> フィルター適用
+          </button>
+          <button class="vnp-btn-clear-paste" id="vnpClearPaste">
+            <i class="fas fa-eraser"></i> クリア
+          </button>
+          <span class="vnp-paste-hint" id="vnpPasteHint"></span>
+        </div>
+      </div>
+
+      <!-- Right: chip list (collapsible) -->
+      <div class="vnp-chips-side" id="vnpChipsSide">
+        <div class="vnp-chips-toolbar">
+          <div class="vnp-chip-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="vnpSearch" placeholder="チップ絞り込み…" autocomplete="off" />
+          </div>
+          <button class="vnp-btn-all" id="vnpSelectAll">
+            <i class="fas fa-check-double"></i> 全選択
+          </button>
+        </div>
+        <div class="vnp-chips" id="vnpChips"></div>
+      </div>
     </div>
-    <!-- Selected summary -->
+
+    <!-- Selected summary bar -->
     <div class="vnp-selected-bar" id="vnpSelectedBar">
       <span id="vnpSelectedText"><i class="fas fa-filter"></i> フィルター未適用（全件表示）</span>
       <div class="vnp-selected-chips" id="vnpSelectedChips"></div>

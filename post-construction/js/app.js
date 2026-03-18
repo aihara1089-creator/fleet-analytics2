@@ -612,14 +612,74 @@ function applyFilters() {
 // ============================================================
 // VESSEL NAME FILTER PANEL
 // ============================================================
+
+/** テキストエリアの内容を解析して選択状態に反映 */
+function applyPasteFilter() {
+  const raw = document.getElementById('vnpPasteArea').value;
+  const hint = document.getElementById('vnpPasteHint');
+
+  // 改行・全角スペース・タブで分割し、空行を除去、前後空白をトリム
+  const lines = raw
+    .split(/[\r\n\u3000\t]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  if(lines.length === 0) {
+    selectedVesselNames.clear();
+    hint.className = 'vnp-paste-hint';
+    hint.textContent = '';
+    buildVnpChips();
+    applyFilters();
+    return;
+  }
+
+  // 管理リストとの照合（大文字化して部分一致）
+  const matched   = [];
+  const unmatched = [];
+
+  lines.forEach(line => {
+    const lineUp = line.toUpperCase();
+    // 完全一致を優先
+    const exact = MANAGED_VESSEL_NAMES.find(n => n.toUpperCase() === lineUp);
+    if(exact) {
+      matched.push(exact);
+      return;
+    }
+    // 部分一致（管理リスト側が入力を含む、または入力が管理リストを含む）
+    const partial = MANAGED_VESSEL_NAMES.find(n =>
+      n.toUpperCase().includes(lineUp) || lineUp.includes(n.toUpperCase())
+    );
+    if(partial) {
+      matched.push(partial);
+    } else {
+      unmatched.push(line);
+    }
+  });
+
+  // 重複除去して選択状態へ
+  selectedVesselNames = new Set(matched);
+
+  // ヒント表示
+  if(unmatched.length === 0) {
+    hint.className = 'vnp-paste-hint ok';
+    hint.textContent = `✓ ${matched.length} 隻マッチ`;
+  } else {
+    hint.className = 'vnp-paste-hint warn';
+    hint.textContent = `${matched.length} 隻マッチ / ${unmatched.length} 件未照合`;
+  }
+
+  buildVnpChips();
+  applyFilters();
+}
+
 function buildVnpChips() {
   const wrap  = document.getElementById('vnpChips');
   const query = (document.getElementById('vnpSearch').value||'').trim().toLowerCase();
   document.getElementById('vnpTotal').textContent = MANAGED_VESSEL_NAMES.length;
 
   wrap.innerHTML = MANAGED_VESSEL_NAMES.map(name => {
-    const isActive  = selectedVesselNames.has(name);
-    const isHidden  = query && !name.toLowerCase().includes(query);
+    const isActive = selectedVesselNames.has(name);
+    const isHidden = query && !name.toLowerCase().includes(query);
     return `<span class="vnp-chip${isActive?' active':''}${isHidden?' hidden-chip':''}" data-name="${name}">
       ${isActive?'<i class="fas fa-check"></i>':''}${name}
     </span>`;
@@ -643,7 +703,6 @@ function buildVnpChips() {
 }
 
 function renderVnpSelectedBar() {
-  const bar   = document.getElementById('vnpSelectedBar');
   const text  = document.getElementById('vnpSelectedText');
   const chips = document.getElementById('vnpSelectedChips');
 
@@ -959,22 +1018,37 @@ document.addEventListener('DOMContentLoaded', ()=>{
     ['searchInput','filterManager','filterConnection','filterWindows','filterYear','filterVdr']
       .forEach(id=>{ document.getElementById(id).value=''; });
     selectedVesselNames.clear();
+    document.getElementById('vnpPasteArea').value = '';
+    document.getElementById('vnpPasteHint').textContent = '';
+    document.getElementById('vnpPasteHint').className = 'vnp-paste-hint';
     buildVnpChips();
     applyFilters();
     toast('フィルターをリセットしました','info');
   });
 
-  // VNP: search input
-  document.getElementById('vnpSearch').addEventListener('input', ()=>{
-    buildVnpChips();
+  // VNP: テキストエリア「フィルター適用」ボタン
+  document.getElementById('vnpApply').addEventListener('click', applyPasteFilter);
+
+  // VNP: Ctrl+Enter / Cmd+Enter でも適用
+  document.getElementById('vnpPasteArea').addEventListener('keydown', e => {
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyPasteFilter();
   });
-  // VNP: clear search
-  document.getElementById('vnpClear').addEventListener('click', ()=>{
-    document.getElementById('vnpSearch').value = '';
+
+  // VNP: テキストエリアのクリアボタン
+  document.getElementById('vnpClearPaste').addEventListener('click', () => {
+    document.getElementById('vnpPasteArea').value = '';
+    document.getElementById('vnpPasteHint').textContent = '';
+    document.getElementById('vnpPasteHint').className = 'vnp-paste-hint';
+    selectedVesselNames.clear();
     buildVnpChips();
+    applyFilters();
   });
-  // VNP: select all (visible chips)
-  document.getElementById('vnpSelectAll').addEventListener('click', ()=>{
+
+  // VNP: チップ絞り込み検索
+  document.getElementById('vnpSearch').addEventListener('input', buildVnpChips);
+
+  // VNP: 全選択（チップ）
+  document.getElementById('vnpSelectAll').addEventListener('click', () => {
     const q = document.getElementById('vnpSearch').value.toLowerCase();
     MANAGED_VESSEL_NAMES.forEach(name => {
       if(!q || name.toLowerCase().includes(q)) selectedVesselNames.add(name);
@@ -982,18 +1056,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
     buildVnpChips();
     applyFilters();
   });
-  // VNP: deselect all
-  document.getElementById('vnpSelectNone').addEventListener('click', ()=>{
+
+  // VNP: 全解除
+  document.getElementById('vnpSelectNone').addEventListener('click', () => {
     selectedVesselNames.clear();
+    document.getElementById('vnpPasteArea').value = '';
+    document.getElementById('vnpPasteHint').textContent = '';
+    document.getElementById('vnpPasteHint').className = 'vnp-paste-hint';
     buildVnpChips();
     applyFilters();
   });
-  // VNP: toggle chips panel
-  document.getElementById('vnpToggle').addEventListener('click', ()=>{
-    const wrap = document.getElementById('vnpChipsWrap');
+
+  // VNP: チップ一覧の展開/折りたたみ
+  document.getElementById('vnpToggle').addEventListener('click', () => {
+    const side    = document.getElementById('vnpChipsSide');
     const chevron = document.getElementById('vnpChevron');
-    wrap.classList.toggle('hidden');
-    chevron.className = wrap.classList.contains('hidden')
+    side.classList.toggle('collapsed');
+    chevron.className = side.classList.contains('collapsed')
       ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
   });
 

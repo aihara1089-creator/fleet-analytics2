@@ -413,73 +413,33 @@ body {
   overflow: hidden;
 }
 
+/* Header */
 .vnp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  flex-wrap: wrap;
-  gap: 10px;
-  border-bottom: 1px solid var(--slate-100);
+  padding: 13px 18px;
   background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
   color: #fff;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-
 .vnp-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: .92rem;
-  font-weight: 700;
-  letter-spacing: .02em;
+  display: flex; align-items: center; gap: 10px;
+  font-size: .92rem; font-weight: 700; letter-spacing: .02em;
 }
 .vnp-title i { color: var(--teal-500); }
-
 .vnp-badge {
-  background: rgba(20,184,166,.2);
-  border: 1px solid rgba(20,184,166,.4);
+  background: rgba(20,184,166,.18);
+  border: 1px solid rgba(20,184,166,.35);
   color: var(--teal-500);
   padding: 2px 10px;
   border-radius: 20px;
-  font-size: .75rem;
-  font-weight: 500;
+  font-size: .74rem; font-weight: 500;
 }
 .vnp-badge strong { color: #fff; }
-
-.vnp-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.vnp-search-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 8px;
-  padding: 6px 10px;
-  min-width: 200px;
-}
-.vnp-search-wrap i { color: var(--slate-400); font-size: .82rem; }
-.vnp-search-wrap input {
-  border: none; background: transparent; outline: none;
-  font-size: .84rem; color: #fff; width: 100%;
-  font-family: var(--font);
-}
-.vnp-search-wrap input::placeholder { color: var(--slate-400); }
-.vnp-clear {
-  background: none; border: none;
-  color: var(--slate-400); cursor: pointer;
-  padding: 0; font-size: .8rem;
-  transition: color var(--transition);
-  flex-shrink: 0;
-}
-.vnp-clear:hover { color: #fff; }
-
-.vnp-btn-all, .vnp-btn-none, .vnp-btn-toggle {
+.vnp-header-actions { display: flex; align-items: center; gap: 8px; }
+.vnp-btn-none, .vnp-btn-toggle {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 6px 12px;
   border-radius: 7px;
@@ -489,68 +449,176 @@ body {
   font-family: var(--font);
   white-space: nowrap;
 }
-.vnp-btn-all {
+.vnp-btn-none {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--slate-300);
+}
+.vnp-btn-none:hover { background: rgba(255,255,255,.18); color: #fff; }
+.vnp-btn-toggle {
   background: rgba(20,184,166,.15);
   border: 1px solid rgba(20,184,166,.4);
   color: var(--teal-500);
 }
-.vnp-btn-all:hover { background: rgba(20,184,166,.3); }
-.vnp-btn-none {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.15);
-  color: var(--slate-300);
-}
-.vnp-btn-none:hover { background: rgba(255,255,255,.15); color: #fff; }
-.vnp-btn-toggle {
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.2);
-  color: #fff;
-}
-.vnp-btn-toggle:hover { background: rgba(255,255,255,.2); }
+.vnp-btn-toggle:hover { background: rgba(20,184,166,.3); }
 
-/* Chips wrap */
-.vnp-chips-wrap {
-  padding: 14px 18px 16px;
-  background: var(--slate-50);
-  border-bottom: 1px solid var(--slate-200);
-  max-height: 260px;
-  overflow-y: auto;
+/* Body: two-column layout */
+.vnp-body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 0;
 }
+
+/* Left: paste area */
+.vnp-paste-side {
+  padding: 16px 16px 16px 18px;
+  border-right: 1px solid var(--slate-200);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--slate-50);
+}
+.vnp-paste-label {
+  font-size: .78rem; font-weight: 600;
+  color: var(--slate-600);
+  display: flex; align-items: center; gap: 6px;
+}
+.vnp-paste-label i { color: var(--teal-500); }
+
+#vnpPasteArea {
+  width: 100%;
+  resize: vertical;
+  min-height: 150px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: .82rem;
+  font-family: 'Courier New', var(--font);
+  color: var(--slate-700);
+  background: #fff;
+  outline: none;
+  line-height: 1.7;
+  transition: border-color var(--transition);
+}
+#vnpPasteArea:focus { border-color: var(--teal-500); }
+#vnpPasteArea::placeholder { color: var(--slate-300); }
+
+.vnp-paste-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.vnp-btn-apply {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, var(--teal-500), #0e7490);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: .82rem; font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font);
+  box-shadow: 0 2px 6px rgba(20,184,166,.3);
+}
+.vnp-btn-apply:hover { opacity: .9; transform: translateY(-1px); }
+.vnp-btn-clear-paste {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none;
+  border: 1.5px solid var(--slate-200);
+  color: var(--slate-500);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: .78rem; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font);
+}
+.vnp-btn-clear-paste:hover { border-color: var(--slate-400); color: var(--slate-700); }
+.vnp-paste-hint {
+  font-size: .74rem;
+  color: var(--slate-400);
+  flex: 1;
+}
+.vnp-paste-hint.ok    { color: var(--teal-500); font-weight: 600; }
+.vnp-paste-hint.warn  { color: var(--orange-500); font-weight: 600; }
+
+/* Right: chips side */
+.vnp-chips-side {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow: hidden;
+}
+.vnp-chips-side.collapsed { max-height: 0; }
+
+.vnp-chips-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--slate-100);
+  background: var(--slate-50);
+  flex-shrink: 0;
+}
+.vnp-chip-search-wrap {
+  display: flex; align-items: center; gap: 6px;
+  background: #fff;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 7px;
+  padding: 5px 10px;
+  flex: 1;
+}
+.vnp-chip-search-wrap i { color: var(--slate-400); font-size: .8rem; }
+.vnp-chip-search-wrap input {
+  border: none; background: transparent; outline: none;
+  font-size: .82rem; color: var(--slate-700); width: 100%;
+  font-family: var(--font);
+}
+.vnp-chip-search-wrap input::placeholder { color: var(--slate-300); }
+.vnp-btn-all {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: .76rem; font-weight: 600;
+  cursor: pointer;
+  background: rgba(20,184,166,.1);
+  border: 1px solid rgba(20,184,166,.3);
+  color: var(--teal-500);
+  font-family: var(--font);
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+.vnp-btn-all:hover { background: rgba(20,184,166,.2); }
+
 .vnp-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  padding: 10px 14px 12px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .vnp-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px 4px 10px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px;
   border-radius: 20px;
-  font-size: .76rem; font-weight: 500;
+  font-size: .73rem; font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
   user-select: none;
   border: 1.5px solid var(--slate-200);
   background: #fff;
   color: var(--slate-600);
+  white-space: nowrap;
 }
-.vnp-chip:hover {
-  border-color: var(--teal-500);
-  color: var(--teal-500);
-  background: var(--teal-100);
-}
+.vnp-chip:hover { border-color: var(--teal-500); color: var(--teal-500); background: var(--teal-100); }
 .vnp-chip.active {
   background: var(--teal-500);
   border-color: var(--teal-500);
   color: #fff;
-  box-shadow: 0 1px 4px rgba(20,184,166,.3);
+  box-shadow: 0 1px 4px rgba(20,184,166,.25);
 }
-.vnp-chip.active:hover {
-  background: #0e7490;
-  border-color: #0e7490;
-}
-.vnp-chip.hidden-chip { display: none; }
-.vnp-chip i { font-size: .65rem; }
+.vnp-chip.active:hover { background: #0e7490; border-color: #0e7490; }
+.vnp-chip.hidden-chip  { display: none; }
+.vnp-chip i { font-size: .62rem; }
 
 /* Selected bar */
 .vnp-selected-bar {
@@ -561,19 +629,15 @@ body {
   flex-wrap: wrap;
   min-height: 44px;
   background: #fff;
+  border-top: 1px solid var(--slate-100);
 }
 #vnpSelectedText {
-  font-size: .78rem;
-  color: var(--slate-500);
-  white-space: nowrap;
-  flex-shrink: 0;
+  font-size: .78rem; color: var(--slate-500);
+  white-space: nowrap; flex-shrink: 0;
 }
 #vnpSelectedText i { color: var(--teal-500); }
 #vnpSelectedText.active { color: var(--teal-500); font-weight: 600; }
-
-.vnp-selected-chips {
-  display: flex; flex-wrap: wrap; gap: 5px;
-}
+.vnp-selected-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .vnp-sel-chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--teal-100);
@@ -581,29 +645,29 @@ body {
   color: var(--teal-500);
   padding: 2px 8px 2px 10px;
   border-radius: 20px;
-  font-size: .73rem; font-weight: 600;
+  font-size: .72rem; font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
 }
 .vnp-sel-chip:hover { background: var(--teal-500); color: #fff; }
-.vnp-sel-chip i { font-size: .62rem; }
+.vnp-sel-chip i { font-size: .6rem; }
 .vnp-more-chip {
-  background: var(--slate-100);
-  border: 1px solid var(--slate-200);
+  background: var(--slate-100); border: 1px solid var(--slate-200);
   color: var(--slate-500);
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-size: .73rem; font-weight: 500;
-  cursor: pointer;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: .72rem; font-weight: 500; cursor: pointer;
 }
 .vnp-more-chip:hover { background: var(--slate-200); }
 
 /* Highlight matched row */
-.vessel-table tbody tr.name-matched {
-  background: rgba(20,184,166,.06);
-}
-.vessel-table tbody tr.name-matched:hover {
-  background: var(--teal-100);
+.vessel-table tbody tr.name-matched { background: rgba(20,184,166,.06); }
+.vessel-table tbody tr.name-matched:hover { background: var(--teal-100); }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .vnp-body { grid-template-columns: 1fr; }
+  .vnp-paste-side { border-right: none; border-bottom: 1px solid var(--slate-200); }
+  .vnp-chips-side { max-height: 200px; }
 }
 
 /* Pagination */
