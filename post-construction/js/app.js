@@ -84,6 +84,7 @@ TODAY.setHours(0,0,0,0);
 // CSV header keys (trimmed)
 const COL = {
   ID:           'ID',
+  VESSEL_NAME:  '船名',
   OWNER:        '船主/ship owner',
   MANAGER:      '管理会社/management company',
   CONTACT:      'コンタクト先/contact information',
@@ -114,6 +115,7 @@ function normKey(s){ return (s||'').replace(/\s+/g,' ').trim(); }
 
 const COLUMN_DEFS = [
   { key: COL.ID,           label: 'ID',             default: true  },
+  { key: COL.VESSEL_NAME,  label: '船名',            default: true  },
   { key: COL.OWNER,        label: '船主',            default: true  },
   { key: COL.MANAGER,      label: '管理会社',        default: true  },
   { key: COL.SHIPYARD,     label: '建造所（船番）',  default: true  },
@@ -493,22 +495,68 @@ function buildTableRows(rows) {
     }).join('');
     const id = get(r,COL.ID)||'';
     const owner = get(r,COL.OWNER)||'';
-    // Highlight if name-matched
+    // Highlight if name-matched (VESSEL_NAME列 → OWNER列の順で照合)
+    const vname = (get(r, COL.VESSEL_NAME)||'').trim().toUpperCase();
     const isMatched = selectedVesselNames.size > 0 &&
-      [...selectedVesselNames].some(name =>
-        owner.trim().toUpperCase().includes(name.toUpperCase()) ||
-        name.toUpperCase().includes(owner.trim().toUpperCase())
-      );
+      [...selectedVesselNames].some(name => {
+        const n = name.toUpperCase();
+        return (vname && (vname === n || vname.includes(n) || n.includes(vname)))
+            || (owner.trim() && (owner.trim().toUpperCase() === n ||
+                owner.trim().toUpperCase().includes(n) || n.includes(owner.trim().toUpperCase())));
+      });
     return `<tr data-id="${id}" data-owner="${owner}"${isMatched?' class="name-matched"':''}>${cells}</tr>`;
   }).join('');
 }
 
-function renderTable() {
+function renderTable(nameFilteredCount) {
   const start = (currentPage-1)*PAGE_SIZE;
   const pageRows = filtered.slice(start, start+PAGE_SIZE);
   document.getElementById('tableHead').innerHTML = buildTableHead();
   document.getElementById('tableBody').innerHTML = buildTableRows(pageRows);
-  document.getElementById('tableCount').textContent = `${filtered.length} 件表示`;
+
+  // カウント表示：常に「フィルター後N件 / 全M件」スタイル
+  const countEl = document.getElementById('tableCount');
+  const hasNameFilter  = selectedVesselNames.size > 0;
+  const hasOtherFilter = !!(
+    document.getElementById('searchInput').value ||
+    document.getElementById('filterManager').value ||
+    document.getElementById('filterConnection').value ||
+    document.getElementById('filterWindows').value ||
+    document.getElementById('filterYear').value ||
+    document.getElementById('filterVdr').value
+  );
+  const anyFilter = hasNameFilter || hasOtherFilter;
+
+  if(hasNameFilter && hasOtherFilter) {
+    // 船名フィルター ＋ 追加絞込：「絞込後N件 / 船名マッチM件 / 全T件」
+    countEl.innerHTML =
+      `<span class="count-filtered">${filtered.length}</span>` +
+      ` <span class="count-sep">/</span> ` +
+      `<span class="count-name">${nameFilteredCount ?? filtered.length}</span>` +
+      ` <span class="count-sep">/</span> ` +
+      `<span class="count-total">${allData.length}</span> 件` +
+      `<span class="count-hint">（船名${selectedVesselNames.size}隻フィルター後 × 追加絞込）</span>`;
+  } else if(hasNameFilter) {
+    // 船名フィルターのみ：「マッチN件 / 全M件（船名X隻指定）」
+    countEl.innerHTML =
+      `<span class="count-filtered">${filtered.length}</span>` +
+      ` <span class="count-sep">/</span> ` +
+      `<span class="count-total">${allData.length}</span> 件` +
+      `<span class="count-hint">（船名 ${selectedVesselNames.size} 隻指定）</span>`;
+  } else if(hasOtherFilter) {
+    // 追加絞込のみ：「絞込後N件 / 全M件」
+    countEl.innerHTML =
+      `<span class="count-filtered">${filtered.length}</span>` +
+      ` <span class="count-sep">/</span> ` +
+      `<span class="count-total">${allData.length}</span> 件` +
+      `<span class="count-hint">（絞込中）</span>`;
+  } else {
+    // 全件表示
+    countEl.innerHTML =
+      `<span class="count-total">${allData.length}</span> 件` +
+      `<span class="count-hint">（全件）</span>`;
+  }
+
   renderPagination();
 
   // Sort
@@ -579,19 +627,36 @@ function applyFilters() {
   const year = document.getElementById('filterYear').value;
   const vdr  = document.getElementById('filterVdr').value;
 
+  // ── 船名フィルター通過数（他フィルター適用前）
+  const nameFilteredCount = selectedVesselNames.size > 0
+    ? allData.filter(r => {
+        const vn    = (get(r, COL.VESSEL_NAME)||'').trim().toUpperCase();
+        const owner = (get(r, COL.OWNER)||'').trim().toUpperCase();
+        return [...selectedVesselNames].some(name => {
+          const n = name.toUpperCase();
+          return (vn && (vn === n || vn.includes(n) || n.includes(vn)))
+              || (owner && (owner === n || owner.includes(n) || n.includes(owner)));
+        });
+      }).length
+    : allData.length;
+
   filtered = allData.filter(r=>{
-    // Vessel name filter
+    // 船名フィルター（VESSEL_NAME列 → OWNER列の順で照合）
     if(selectedVesselNames.size > 0) {
+      const vn    = (get(r, COL.VESSEL_NAME)||'').trim().toUpperCase();
       const owner = (get(r, COL.OWNER)||'').trim().toUpperCase();
-      const matched = [...selectedVesselNames].some(name =>
-        owner.includes(name.toUpperCase()) || name.toUpperCase().includes(owner)
-      );
+      const matched = [...selectedVesselNames].some(name => {
+        const n = name.toUpperCase();
+        return (vn && (vn === n || vn.includes(n) || n.includes(vn)))
+            || (owner && (owner === n || owner.includes(n) || n.includes(owner)));
+      });
       if(!matched) return false;
     }
     if(q){
       const searchFields = [
-        get(r,COL.OWNER), get(r,COL.MANAGER), get(r,COL.SHIPYARD), get(r,COL.IMO),
-        get(r,COL.ID), get(r,COL.CONTACT), get(r,COL.PROVIDER)
+        get(r,COL.VESSEL_NAME), get(r,COL.OWNER), get(r,COL.MANAGER),
+        get(r,COL.SHIPYARD), get(r,COL.IMO), get(r,COL.ID),
+        get(r,COL.CONTACT), get(r,COL.PROVIDER)
       ];
       if(!searchFields.some(v=>(v||'').toLowerCase().includes(q))) return false;
     }
@@ -605,7 +670,7 @@ function applyFilters() {
   });
   applySort();
   currentPage=1;
-  renderTable();
+  renderTable(nameFilteredCount);
   renderVnpSelectedBar();
 }
 
@@ -770,14 +835,15 @@ function yesnoField(val) {
 }
 
 function openModal(r) {
+  const vesselName = get(r,COL.VESSEL_NAME)||'';
   const owner   = get(r,COL.OWNER)   ||'—';
   const manager = get(r,COL.MANAGER) ||'—';
   const imo     = get(r,COL.IMO)     ||'—';
   const shipyard= get(r,COL.SHIPYARD)||'—';
 
   document.getElementById('modalHeader').innerHTML=`
-    <div class="modal-title">${owner}</div>
-    <div class="modal-subtitle">管理: ${manager} ｜ 建造所: ${shipyard} ｜ IMO: ${imo}</div>`;
+    <div class="modal-title">${vesselName || owner}</div>
+    <div class="modal-subtitle">${vesselName ? `船主: ${owner} ｜ ` : ''}管理: ${manager} ｜ 建造所: ${shipyard} ｜ IMO: ${imo}</div>`;
 
   document.getElementById('modalBody').innerHTML=`
     <!-- 基本情報 -->
@@ -786,13 +852,14 @@ function openModal(r) {
       <div class="modal-grid">
         ${[
           ['ID',                     get(r,COL.ID)||'—'],
+          ['船名',                   vesselName||'—'],
           ['船主',                   owner],
           ['管理会社',               manager],
           ['コンタクト先',           get(r,COL.CONTACT)||'—'],
           ['建造所（船番）',          shipyard],
           ['IMO No.',                imo],
           ['搭載時期',               r._installDate ? formatInstallDate(r._installDate) : (get(r,COL.INSTALL_DATE)||'—')],
-          ['使用状態',               get(r,COL.EMS)||'—'],
+          ['EMS プロトコル',         get(r,COL.EMS)||'—'],
         ].map(([l,v])=>`
           <div class="modal-field">
             <div class="modal-field-label">${l}</div>
@@ -924,17 +991,17 @@ function exportCSV() {
 function loadSampleData() {
   const d = (y,m) => `${y}/${String(m).padStart(2,'0')}`;
   const csv = [
-`ID,船主/ship owner,管理会社/management company,コンタクト先/contact information,建造所/shipyard（船番）,接続方法/remote connection method,Windows version,TV ID password,VDR,VDR IP address,Logger,Logger IP address,EMS　プロトコル,IMO No.,FT Serial number,BOX PC Type,メール連携先/mail connection method,FT/FM IP address,mail PC IP address,"Autosend setting\n(SMTP Port number)","FT BOX PC \n設置場所/located place",プロバイダ/internet provider,搭載時期/date of installation,備考/notes`,
-`001,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1001），VPN,Windows 10,TV-001 / pass123,JRC JCY-1800,192.168.1.100,Furuno FV-800,192.168.1.101,NMEA 2000,9100001,FT-20240001,NEC Express,Inmarsat Fleet One,10.0.1.1,10.0.1.2,25,Engine Control Room,Inmarsat,${d(2024,3)},初搭載`,
-`002,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1002），VPN,Windows 11,TV-002 / pass456,Consilium Selesmar,192.168.2.100,Furuno FV-800,192.168.2.101,NMEA 2000,9100002,FT-20240002,Panasonic CF,Inmarsat Fleet One,10.0.2.1,10.0.2.2,587,Engine Control Room,Inmarsat,${d(2024,5)},EMS MODBUS対応`,
-`003,MOL Tankers Ltd.,JMM東京,contact@jmm.co.jp,JMU横浜（2001），VSAT,Windows 10,TV-003 / abc789,None,-,Furuno FV-710,192.168.3.101,MODBUS,9100003,FT-20230003,Dell OptiPlex,Iridium,10.0.3.1,10.0.3.2,465,Navigation Bridge,VSAT Global,${d(2023,11)},Logger IPのみ確認済`,
-`004,MOL Tankers Ltd.,JMM東京,contact@jmm.co.jp,JMU横浜（2002），VSAT,Windows 11,TV-004 / xyz012,JRC JCY-1900,192.168.4.100,Furuno FV-800,192.168.4.101,NMEA 2000,9100004,FT-20240004,NEC Express,Iridium,10.0.4.1,10.0.4.2,25,Engine Control Room,VSAT Global,${d(2024,1)},メタノール対応型`,
-`005,MOL Bulk Carriers,名村船舶管理,info@namura-sm.co.jp,名村造船（3001），3G/LTE,Windows 10,TV-005 / lmn345,None,-,Furuno FV-800,192.168.5.101,NMEA 0183,9100005,FT-20220005,Panasonic CF,SoftBank Maritime,10.0.5.1,10.0.5.2,587,Engine Control Room,NTT Docomo,${d(2022,7)},旧型モデル`,
-`006,MOL Bulk Carriers,名村船舶管理,info@namura-sm.co.jp,名村造船（3002），3G/LTE,Windows 11,TV-006 / opq678,None,-,Furuno FV-710,192.168.6.101,NMEA 0183,9100006,FT-20230006,Dell OptiPlex,SoftBank Maritime,10.0.6.1,10.0.6.2,465,Navigation Bridge,NTT Docomo,${d(2023,4)},アップグレード予定`,
-`007,MOL Ferry Co.,MHI船舶管理,mgr@mhi-sm.co.jp,三菱重工（4001），VPN,Windows 10,TV-007 / rst901,JRC JCY-1800,192.168.7.100,Furuno FV-800,192.168.7.101,NMEA 2000,9100007,FT-20231007,NEC Express,Inmarsat Fleet One,10.0.7.1,10.0.7.2,25,Engine Control Room,Inmarsat,${d(2023,9)},客船搭載`,
-`008,MOL Chemical Tankers,大島船舶管理,ops@oshima-mgmt.co.jp,大島造船（5001），VSAT,Windows 11,TV-008 / uvw234,Consilium Selesmar,192.168.8.100,Furuno FV-800,192.168.8.101,MODBUS,9100008,FT-20240008,Panasonic CF,Inmarsat Fleet One,10.0.8.1,10.0.8.2,587,Engine Control Room,VSAT Global,${d(2024,2)},EMS設定要確認`,
-`009,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1003），VPN,Windows 11,TV-009 / efg567,JRC JCY-1900,192.168.9.100,Furuno FV-710,192.168.9.101,NMEA 2000,9100009,FT-20240009,Dell OptiPlex,Inmarsat Fleet One,10.0.9.1,10.0.9.2,25,Navigation Bridge,Inmarsat,${d(2024,6)},メタノール対応`,
-`010,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1004），VPN,Windows 11,TV-010 / hij890,None,-,Furuno FV-800,192.168.10.101,NMEA 2000,9100010,FT-20250010,NEC Express,Inmarsat Fleet One,10.0.10.1,10.0.10.2,587,Engine Control Room,Inmarsat,${d(2025,1)},最新搭載`,
+`ID,船名,船主/ship owner,管理会社/management company,コンタクト先/contact information,建造所/shipyard（船番）,接続方法/remote connection method,Windows version,TV ID password,VDR,VDR IP address,Logger,Logger IP address,EMS　プロトコル,IMO No.,FT Serial number,BOX PC Type,メール連携先/mail connection method,FT/FM IP address,mail PC IP address,"Autosend setting\n(SMTP Port number)","FT BOX PC \n設置場所/located place",プロバイダ/internet provider,搭載時期/date of installation,備考/notes`,
+`001,PEGASUS ACE,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1001），VPN,Windows 10,TV-001 / pass123,JRC JCY-1800,192.168.1.100,Furuno FV-800,192.168.1.101,NMEA 2000,9100001,FT-20240001,NEC Express,Inmarsat Fleet One,10.0.1.1,10.0.1.2,25,Engine Control Room,Inmarsat,${d(2024,3)},初搭載`,
+`002,SWALLOW ACE,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1002），VPN,Windows 11,TV-002 / pass456,Consilium Selesmar,192.168.2.100,Furuno FV-800,192.168.2.101,NMEA 2000,9100002,FT-20240002,Panasonic CF,Inmarsat Fleet One,10.0.2.1,10.0.2.2,587,Engine Control Room,Inmarsat,${d(2024,5)},EMS MODBUS対応`,
+`003,SWIFT ACE,MOL Tankers Ltd.,JMM東京,contact@jmm.co.jp,JMU横浜（2001），VSAT,Windows 10,TV-003 / abc789,None,-,Furuno FV-710,192.168.3.101,MODBUS,9100003,FT-20230003,Dell OptiPlex,Iridium,10.0.3.1,10.0.3.2,465,Navigation Bridge,VSAT Global,${d(2023,11)},Logger IPのみ確認済`,
+`004,SUNRISE ACE,MOL Tankers Ltd.,JMM東京,contact@jmm.co.jp,JMU横浜（2002），VSAT,Windows 11,TV-004 / xyz012,JRC JCY-1900,192.168.4.100,Furuno FV-800,192.168.4.101,NMEA 2000,9100004,FT-20240004,NEC Express,Iridium,10.0.4.1,10.0.4.2,25,Engine Control Room,VSAT Global,${d(2024,1)},メタノール対応型`,
+`005,GARNET ACE,MOL Bulk Carriers,名村船舶管理,info@namura-sm.co.jp,名村造船（3001），3G/LTE,Windows 10,TV-005 / lmn345,None,-,Furuno FV-800,192.168.5.101,NMEA 0183,9100005,FT-20220005,Panasonic CF,SoftBank Maritime,10.0.5.1,10.0.5.2,587,Engine Control Room,NTT Docomo,${d(2022,7)},旧型モデル`,
+`006,RUBY ACE,MOL Bulk Carriers,名村船舶管理,info@namura-sm.co.jp,名村造船（3002），3G/LTE,Windows 11,TV-006 / opq678,None,-,Furuno FV-710,192.168.6.101,NMEA 0183,9100006,FT-20230006,Dell OptiPlex,SoftBank Maritime,10.0.6.1,10.0.6.2,465,Navigation Bridge,NTT Docomo,${d(2023,4)},アップグレード予定`,
+`007,IRIS ACE,MOL Ferry Co.,MHI船舶管理,mgr@mhi-sm.co.jp,三菱重工（4001），VPN,Windows 10,TV-007 / rst901,JRC JCY-1800,192.168.7.100,Furuno FV-800,192.168.7.101,NMEA 2000,9100007,FT-20231007,NEC Express,Inmarsat Fleet One,10.0.7.1,10.0.7.2,25,Engine Control Room,Inmarsat,${d(2023,9)},客船搭載`,
+`008,CATTLEYA ACE,MOL Chemical Tankers,大島船舶管理,ops@oshima-mgmt.co.jp,大島造船（5001），VSAT,Windows 11,TV-008 / uvw234,Consilium Selesmar,192.168.8.100,Furuno FV-800,192.168.8.101,MODBUS,9100008,FT-20240008,Panasonic CF,Inmarsat Fleet One,10.0.8.1,10.0.8.2,587,Engine Control Room,VSAT Global,${d(2024,2)},EMS設定要確認`,
+`009,CARNATION ACE,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1003），VPN,Windows 11,TV-009 / efg567,JRC JCY-1900,192.168.9.100,Furuno FV-710,192.168.9.101,NMEA 2000,9100009,FT-20240009,Dell OptiPlex,Inmarsat Fleet One,10.0.9.1,10.0.9.2,25,Navigation Bridge,Inmarsat,${d(2024,6)},メタノール対応`,
+`010,SALVIA ACE,MOL Ship Owners Ltd.,今治船舶管理,tech@imabari.co.jp,今治造船（1004），VPN,Windows 11,TV-010 / hij890,None,-,Furuno FV-800,192.168.10.101,NMEA 2000,9100010,FT-20250010,NEC Express,Inmarsat Fleet One,10.0.10.1,10.0.10.2,587,Engine Control Room,Inmarsat,${d(2025,1)},最新搭載`,
   ].join('\n');
 
   loadData(csv);
