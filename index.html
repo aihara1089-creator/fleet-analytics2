@@ -992,10 +992,12 @@ function setHL(id, col) {
     .then(function(r){return r.json();})
     .then(function(data){
       if(!data.ok) throw new Error(data.error||'失敗');
-      // ローカルも即時反映
+      // ローカルも即時反映 → ソートキーをhighlightに固定して再ソート
       var c=APP.allCases.find(function(x){return x.id===id;});
       if(c) c.highlight=col;
-      renderPage();
+      APP.sortKey='highlight';
+      APP.sortDir=1;
+      applyFilter();
     })
     .catch(function(e){toast('HL変更失敗: '+e.message,'error');});
 }
