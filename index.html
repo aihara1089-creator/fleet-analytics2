@@ -334,7 +334,7 @@ textarea.form-control{min-height:80px;resize:vertical}
         <th>備考</th>
         <th onclick="sortBy('expectedDate')">受注予定日</th>
         <th onclick="sortBy('updateTime')">更新日時</th>
-        <th>HL</th>
+        <th onclick="sortBy('highlight')" style="cursor:pointer" title="ハイライト順にソート">HL</th>
         <th>操作</th>
       </tr>
     </thead>
@@ -538,7 +538,7 @@ var APP = {
   allCases: [],
   filtered: [],
   dept: 'all',
-  sortKey: 'priority',
+  sortKey: 'highlight',
   sortDir: 1,
   page: 1,
   ps: 50,
@@ -675,8 +675,21 @@ function applyFilter() {
 function sortArr(cases) {
   var k=APP.sortKey, d=APP.sortDir;
   var pR={'高':1,'中':2,'低':3};
-  var sR={'引合':1,'見積提出（高）':2,'見積提出（低）':3,'受注':4,'逸注':5};
+  // ハイライト無しのステータス順: 引合→見積提出（低）→見積提出（高）→受注→逸注
+  var sR={'引合':1,'見積提出（低）':2,'見積提出（高）':3,'受注':4,'逸注':5};
+  // ハイライトランク: 赤=1, 黄=2, 緑=3, 無し=4
+  var hlR={'赤':1,'黄':2,'緑':3,'':4};
   cases.sort(function(a,b) {
+    // highlight列でのソート or デフォルト（highlight列）の場合:
+    // 赤>黄>緑>ハイライト無し引合>ハイライト無し見積提出（低）>ハイライト無し見積提出（高）>ハイライト無し受注>ハイライト無し逸注
+    if (k==='highlight') {
+      var aHL=hlR[a.highlight]!=null?hlR[a.highlight]:4;
+      var bHL=hlR[b.highlight]!=null?hlR[b.highlight]:4;
+      if (aHL!==bHL) return (aHL-bHL)*d;
+      // 同じハイライト内ではステータス順
+      var aS=sR[a.status]||99, bS=sR[b.status]||99;
+      return (aS-bS)*d;
+    }
     var av,bv;
     if (k==='priority') { av=pR[a.priority]||99; bv=pR[b.priority]||99; }
     else if (k==='status') { av=sR[a.status]||99; bv=sR[b.status]||99; }
@@ -793,7 +806,7 @@ function filterByAlert(type) {
 function sortBy(key) {
   if(APP.sortKey===key) APP.sortDir=-APP.sortDir; else{APP.sortKey=key;APP.sortDir=1;}
   document.querySelectorAll('#mainTable th').forEach(function(th){th.classList.remove('sort-asc','sort-desc');});
-  var map={deptName:1,caseNo:2,customer:3,projectName:4,estimate:5,status:6,priority:7,person:8,expectedDate:10,updateTime:11};
+  var map={deptName:1,caseNo:2,customer:3,projectName:4,estimate:5,status:6,priority:7,person:8,expectedDate:10,updateTime:11,highlight:12};
   var ths=document.querySelectorAll('#mainTable th');
   if(map[key]) ths[map[key]].classList.add(APP.sortDir===1?'sort-asc':'sort-desc');
   applyFilter();
