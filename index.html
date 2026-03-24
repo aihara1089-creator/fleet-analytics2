@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>船事開 引合い管理システム v3.0</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#667eea;--primary-dark:#5a67d8;--secondary:#764ba2;
+  --success:#27ae60;--warning:#f39c12;--danger:#e74c3c;--info:#3498db;
+  --light:#f8f9fa;--dark:#2c3e50;--muted:#7f8c8d;--border:#ecf0f1;
+  --shadow:0 4px 15px rgba(0,0,0,.12);--shadow-hover:0 8px 25px rgba(0,0,0,.2);
+  --radius:12px;--radius-sm:8px
+}
+body{font-family:'Segoe UI','Hiragino Sans','Meiryo',Arial,sans-serif;
+  background:linear-gradient(135deg,var(--primary) 0%,var(--secondary) 100%);
+  min-height:100vh;padding:16px;color:var(--dark)}
+.container{max-width:1920px;margin:0 auto}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.header h1{color:white;font-size:26px;font-weight:700;text-shadow:1px 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px}
+.version-badge{background:rgba(255,255,255,.25);color:white;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.alert-badge{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;transition:transform .2s;display:none}
+.alert-badge:hover{transform:scale(1.05)}
+.alert-overdue{background:#ffe0e0;color:#c0392b}
+.alert-neardue{background:#fff3cd;color:#856404}
+.refresh-info{background:rgba(255,255,255,.2);color:white;padding:8px 14px;border-radius:20px;font-size:12px}
+
+/* DASHBOARD */
+.dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.card{background:white;padding:16px 18px;border-radius:var(--radius);box-shadow:var(--shadow);text-align:center;transition:transform .25s,box-shadow .25s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--secondary))}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
+.card-total{background:linear-gradient(135deg,var(--primary),var(--secondary));color:white}
+.card-total::before{background:rgba(255,255,255,.3)}
+.card h3{font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.5px}
+.card-total h3{color:rgba(255,255,255,.85)}
+.card-stat-row{display:flex;justify-content:space-around;gap:6px}
+.card-stat{flex:1}
+.stat-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+.card-total .stat-label{color:rgba(255,255,255,.7)}
+.stat-value{font-size:20px;font-weight:800;color:var(--info)}
+.card-total .stat-value{color:white}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.card-total .stat-sub{color:rgba(255,255,255,.7)}
+.prog-wrap{margin-top:8px;background:rgba(0,0,0,.08);border-radius:4px;height:5px;overflow:hidden}
+.prog{height:100%;background:linear-gradient(90deg,var(--success),#2ecc71);border-radius:4px;transition:width .8s}
+.card-total .prog-wrap{background:rgba(255,255,255,.25)}
+.card-total .prog{background:rgba(255,255,255,.8)}
+
+/* CONTROL PANEL */
+.control-panel{background:white;padding:14px 18px;border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow)}
+.ctrl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.ctrl-row:last-child{margin-bottom:0}
+.dept-btns{display:flex;gap:8px;flex-wrap:wrap}
+.dept-btn{padding:9px 16px;border:2px solid var(--info);border-radius:var(--radius-sm);background:white;color:var(--info);cursor:pointer;font-size:13px;font-weight:700;transition:all .25s;white-space:nowrap}
+.dept-btn:hover{background:#ebf5fb;transform:translateY(-1px)}
+.dept-btn.active{background:var(--info);color:white;box-shadow:0 3px 10px rgba(52,152,219,.4)}
+.search-wrap{position:relative;flex:1;min-width:220px}
+.search-wrap input{width:100%;padding:10px 12px 10px 36px;border:2px solid #ddd;border-radius:var(--radius-sm);font-size:13px;transition:border-color .2s}
+.search-wrap input:focus{outline:none;border-color:var(--info)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
+.status-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sfl{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:5px 10px;border-radius:20px;border:1.5px solid #ddd;transition:all .2s;white-space:nowrap;user-select:none}
+.sfl:hover{border-color:var(--info)}
+.sfl input{display:none}
+.sfl.ck{border-color:transparent;color:white}
+.sfl.ck.sf-引合{background:#1976d2}
+.sfl.ck.sf-見積高{background:#f57c00}
+.sfl.ck.sf-見積低{background:#e65100}
+.sfl.ck.sf-受注{background:var(--success)}
+.sfl.ck.sf-逸注{background:var(--danger)}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.btn{padding:9px 16px;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;transition:all .25s;box-shadow:0 2px 6px rgba(0,0,0,.12);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--info);color:white}
+.btn-success{background:var(--success);color:white}
+.btn-warning{background:var(--warning);color:white}
+.btn-danger{background:var(--danger);color:white}
+.btn-dark{background:var(--dark);color:white}
+.btn-outline{background:white;color:var(--dark);border:2px solid #ddd}
+.btn-outline:hover:not(:disabled){border-color:var(--info);color:var(--info)}
+
+/* TABLE */
+.tbl-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:white;border-radius:var(--radius) var(--radius) 0 0;border-bottom:2px solid var(--border)}
+.tbl-meta{font-size:13px;color:var(--muted);font-weight:600}
+.bulk-area{display:flex;align-items:center;gap:8px;font-size:13px}
+.bulk-area select{padding:6px 10px;border:2px solid #ddd;border-radius:6px;font-size:12px}
+.tbl-wrap{background:white;border-radius:0 0 var(--radius) var(--radius);overflow:auto;box-shadow:var(--shadow);margin-bottom:20px}
+table{width:100%;border-collapse:collapse;min-width:1200px}
+th{background:#f8f9fa;padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--dark);border-bottom:2px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{background:#e9ecef}
+th.sort-asc::after{content:' ▲';color:var(--info)}
+th.sort-desc::after{content:' ▼';color:var(--info)}
+td{padding:9px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;vertical-align:middle}
+tr:hover td{background:#f8fbff}
+tr.hl-red td{background:#fff0f0}
+tr.hl-yellow td{background:#fffbe6}
+tr.hl-green td{background:#f0fff4}
+.empty-state{text-align:center;padding:50px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+
+/* BADGES */
+.status-badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap}
+.s-引合{background:#e3f2fd;color:#1565c0}
+.s-見積提出高{background:#fff3e0;color:#e65100}
+.s-見積提出低{background:#fbe9e7;color:#bf360c}
+.s-受注{background:#e8f5e9;color:#1b5e20}
+.s-逸注{background:#fce4ec;color:#880e4f}
+.priority-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
+.p-高{background:#ff6b6b;color:white}
+.p-中{background:#4ecdc4;color:white}
+.p-低{background:#bdc3c7;color:white}
+.dept-badge{font-size:11px;background:#f0f4ff;color:var(--primary-dark);padding:2px 7px;border-radius:8px;white-space:nowrap}
+.due-badge{font-size:11px;padding:2px 6px;border-radius:8px;white-space:nowrap}
+.due-overdue{background:#ffe0e0;color:#c0392b;font-weight:700}
+.due-near{background:#fff3cd;color:#856404;font-weight:700}
+.notes-cell{cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-cell.has-notes{color:var(--info);text-decoration:underline dotted}
+.hl-btns{display:flex;gap:3px;align-items:center}
+.hl-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .2s}
+.hl-btn.red{background:#e74c3c}.hl-btn.red.active{border-color:#c0392b;transform:scale(1.3)}
+.hl-btn.yellow{background:#f1c40f}.hl-btn.yellow.active{border-color:#d4ac0d;transform:scale(1.3)}
+.hl-btn.green{background:#27ae60}.hl-btn.green.active{border-color:#1e8449;transform:scale(1.3)}
+.hl-clear{background:none;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:10px;padding:1px 4px;color:var(--muted)}
+.hl-clear:hover{border-color:var(--danger);color:var(--danger)}
+.row-actions{display:flex;gap:4px}
+.btn-sm{padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;transition:all .2s}
+.btn-edit{background:#e8f4f8;color:var(--info)}.btn-edit:hover{background:var(--info);color:white}
+.btn-del{background:#fde8e8;color:var(--danger)}.btn-del:hover{background:var(--danger);color:white}
+.select-col{width:36px;text-align:center}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:4px;padding:12px 16px;background:white;border-top:1px solid var(--border)}
+.page-btn{padding:6px 11px;border:1.5px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px;transition:all .2s}
+.page-btn:hover:not(:disabled){border-color:var(--info);color:var(--info)}
+.page-btn.active{background:var(--info);color:white;border-color:var(--info)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+.page-size-sel{padding:6px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.active{display:flex}
+.modal{background:white;border-radius:var(--radius);max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:2px solid var(--border);background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:var(--radius) var(--radius) 0 0}
+.modal-header h2{color:white;font-size:18px}
+.modal-close{background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
+.modal-close:hover{opacity:.7}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:13px;font-weight:700;color:var(--dark)}
+.form-label .req{color:var(--danger);margin-left:2px}
+.form-control{padding:10px 12px;border:2px solid #ddd;border-radius:var(--radius-sm);font-size:13px;transition:border-color .2s;width:100%;font-family:inherit}
+.form-control:focus{outline:none;border-color:var(--info)}
+textarea.form-control{min-height:80px;resize:vertical}
+.modal-wide{max-width:900px}
+.modal-narrow{max-width:480px}
+
+/* TOAST */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;box-shadow:0 4px 15px rgba(0,0,0,.2);animation:slideIn .3s ease;max-width:350px;word-break:break-all}
+.toast-success{background:#d4edda;color:#155724;border-left:4px solid var(--success)}
+.toast-error{background:#f8d7da;color:#721c24;border-left:4px solid var(--danger)}
+.toast-info{background:#d1ecf1;color:#0c5460;border-left:4px solid var(--info)}
+.toast-warning{background:#fff3cd;color:#856404;border-left:4px solid var(--warning)}
+@keyframes slideIn{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
+
+/* STATS MODAL */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.stats-card{background:#f8f9fa;border-radius:var(--radius-sm);padding:14px}
+.stats-card h4{font-size:14px;color:var(--dark);margin-bottom:10px;border-bottom:2px solid var(--border);padding-bottom:6px}
+.stats-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dotted #ddd}
+.stats-row:last-child{border:none}
+.stats-row-value{font-weight:700;color:var(--info)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .form-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr}
+  .header h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>⚓ 船事開 引合管理システム <span class="version-badge">v3.0</span></h1>
+  <div class="header-right">
+    <div class="alert-badge alert-overdue" id="alertOverdue" onclick="filterByAlert('overdue')">
+      ⚠️ 期限超過 <strong id="overdueNum">0</strong>件
+    </div>
+    <div class="alert-badge alert-neardue" id="alertNearDue" onclick="filterByAlert('neardue')">
+      ⏰ 7日以内 <strong id="nearDueNum">0</strong>件
+    </div>
+    <div class="refresh-info" id="lastSaved">💾 自動保存: 有効</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard">
+  <div class="card card-total">
+    <h3>📊 全体サマリー</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">総件数</div><div class="stat-value" id="totalCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注件数</div><div class="stat-value" id="totalReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注金額(千円)</div><div class="stat-value" id="totalReceivedAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="totalProg" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <h3>📡 モニタリング</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="monCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="monReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="monAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="monProg" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <h3>🚢 操船装置</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="ctlCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="ctlReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="ctlAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="ctlProg" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <h3>🤖 自律</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="autCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="autReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="autAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="autProg" style="width:0%"></div></div>
+  </div>
+</div>
+
+<!-- CONTROL PANEL -->
+<div class="control-panel">
+  <div class="ctrl-row">
+    <div class="dept-btns">
+      <button class="dept-btn active" onclick="setDept('all',this)">🌐 全部署</button>
+      <button class="dept-btn" onclick="setDept('ship_monitoring',this)">📡 モニタリング</button>
+      <button class="dept-btn" onclick="setDept('ship_control',this)">🚢 操船装置</button>
+      <button class="dept-btn" onclick="setDept('ship_autonomous',this)">🤖 自律</button>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="検索: 案件No / 顧客名 / 案件名 / 担当者 ... (Ctrl+K)" oninput="onSearch()">
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <div class="status-filters">
+      <label class="sfl sf-引合"><input type="checkbox" class="sf" value="引合" checked onchange="onSF()">引合</label>
+      <label class="sfl sf-見積高"><input type="checkbox" class="sf" value="見積提出（高）" checked onchange="onSF()">見積(高)</label>
+      <label class="sfl sf-見積低"><input type="checkbox" class="sf" value="見積提出（低）" checked onchange="onSF()">見積(低)</label>
+      <label class="sfl sf-受注"><input type="checkbox" class="sf" value="受注" checked onchange="onSF()">受注</label>
+      <label class="sfl sf-逸注"><input type="checkbox" class="sf" value="逸注" onchange="onSF()">逸注</label>
+    </div>
+    <div class="action-btns">
+      <button class="btn btn-success" onclick="openAddModal()">＋ 新規案件</button>
+      <button class="btn btn-outline" onclick="openStatsModal()">📊 統計</button>
+      <button class="btn btn-outline" onclick="exportCSV()">📥 CSV出力</button>
+      <button class="btn btn-outline" onclick="resetData()" title="初期データに戻す">🔄 データリセット</button>
+    </div>
+  </div>
+  <div class="ctrl-row" style="gap:12px">
+    <label style="font-size:12px;color:var(--muted)">表示件数:
+      <select class="page-size-sel" id="pageSizeSel" onchange="onPageSize()">
+        <option value="25">25件</option>
+        <option value="50" selected>50件</option>
+        <option value="100">100件</option>
+        <option value="200">200件</option>
+        <option value="9999">全件</option>
+      </select>
+    </label>
+    <div class="bulk-area">
+      <span>一括操作:</span>
+      <select id="bulkAction">
+        <option value="">選択...</option>
+        <option value="status_受注">→ 受注</option>
+        <option value="status_引合">→ 引合</option>
+        <option value="status_見積提出（高）">→ 見積(高)</option>
+        <option value="status_見積提出（低）">→ 見積(低)</option>
+        <option value="status_逸注">→ 逸注</option>
+        <option value="hl_赤">HL: 赤</option>
+        <option value="hl_黄">HL: 黄</option>
+        <option value="hl_緑">HL: 緑</option>
+        <option value="hl_">HL: 解除</option>
+        <option value="delete">削除</option>
+      </select>
+      <button class="btn btn-dark" onclick="applyBulk()">実行</button>
+      <button class="btn btn-outline" onclick="selectAllVisible()">全選択</button>
+      <button class="btn btn-outline" onclick="clearSel()">選択解除</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="tbl-header">
+  <div class="tbl-meta" id="tblMeta">読み込み中...</div>
+</div>
+<div class="tbl-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th class="select-col"><input type="checkbox" id="selAllCb" onchange="toggleSelAll(this)"></th>
+        <th onclick="sortBy('deptName')">部署</th>
+        <th onclick="sortBy('caseNo')">案件No</th>
+        <th onclick="sortBy('customer')">顧客名</th>
+        <th onclick="sortBy('projectName')">案件名</th>
+        <th onclick="sortBy('estimate')">見積額(千円)</th>
+        <th onclick="sortBy('status')">ステータス</th>
+        <th onclick="sortBy('priority')">優先度</th>
+        <th onclick="sortBy('person')">担当者</th>
+        <th>備考</th>
+        <th onclick="sortBy('expectedDate')">受注予定日</th>
+        <th onclick="sortBy('updateTime')">更新日時</th>
+        <th>HL</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>➕ 新規案件登録</h2>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="addForm" onsubmit="return submitAdd(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">部署<span class="req">*</span></label>
+            <select id="aDept" class="form-control" required>
+              <option value="ship_monitoring">📡 モニタリング</option>
+              <option value="ship_control">🚢 操船装置</option>
+              <option value="ship_autonomous">🤖 自律</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件No <span style="font-size:11px;color:var(--muted)">(空で自動採番)</span></label>
+            <input type="text" id="aCaseNo" class="form-control" placeholder="例: MON-2026-0001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">顧客名<span class="req">*</span></label>
+            <input type="text" id="aCustomer" class="form-control" required placeholder="顧客名を入力">
+          </div>
+          <div class="form-group">
+            <label class="form-label">担当者</label>
+            <input type="text" id="aPerson" class="form-control" placeholder="担当者名">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">案件名<span class="req">*</span></label>
+            <input type="text" id="aProject" class="form-control" required placeholder="案件名を入力">
+          </div>
+          <div class="form-group">
+            <label class="form-label">見積額(千円)</label>
+            <input type="text" id="aEstimate" class="form-control" placeholder="例: 1,500" oninput="fmtEst(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ステータス<span class="req">*</span></label>
+            <select id="aStatus" class="form-control" required>
+              <option value="引合">引合</option>
+              <option value="見積提出（高）">見積提出（高）</option>
+              <option value="見積提出（低）">見積提出（低）</option>
+              <option value="受注">受注</option>
+              <option value="逸注">逸注</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">優先度</label>
+            <select id="aPriority" class="form-control">
+              <option value="高">高</option>
+              <option value="中" selected>中</option>
+              <option value="低">低</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">受注予定日</label>
+            <input type="date" id="aDate" class="form-control">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">備考</label>
+            <textarea id="aNotes" class="form-control" placeholder="備考・進捗メモ等を入力"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:14px 0 0 0">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addModal')">キャンセル</button>
+          <button type="submit" class="btn btn-success">💾 登録</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>✏️ 案件編集</h2>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="editForm" onsubmit="return submitEdit(event)">
+        <input type="hidden" id="eId">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">部署<span class="req">*</span></label>
+            <select id="eDept" class="form-control" required>
+              <option value="ship_monitoring">📡 モニタリング</option>
+              <option value="ship_control">🚢 操船装置</option>
+              <option value="ship_autonomous">🤖 自律</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件No</label>
+            <input type="text" id="eCaseNo" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">顧客名<span class="req">*</span></label>
+            <input type="text" id="eCustomer" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">担当者</label>
+            <input type="text" id="ePerson" class="form-control">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">案件名<span class="req">*</span></label>
+            <input type="text" id="eProject" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">見積額(千円)</label>
+            <input type="text" id="eEstimate" class="form-control" oninput="fmtEst(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ステータス<span class="req">*</span></label>
+            <select id="eStatus" class="form-control" required>
+              <option value="引合">引合</option>
+              <option value="見積提出（高）">見積提出（高）</option>
+              <option value="見積提出（低）">見積提出（低）</option>
+              <option value="受注">受注</option>
+              <option value="逸注">逸注</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">優先度</label>
+            <select id="ePriority" class="form-control">
+              <option value="高">高</option>
+              <option value="中">中</option>
+              <option value="低">低</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">受注予定日</label>
+            <input type="date" id="eDate" class="form-control">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">備考</label>
+            <textarea id="eNotes" class="form-control"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:14px 0 0 0">
+          <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">キャンセル</button>
+          <button type="submit" class="btn btn-primary">💾 更新</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES MODAL -->
+<div class="modal-overlay" id="notesModal">
+  <div class="modal modal-narrow">
+    <div class="modal-header">
+      <h2>📝 備考詳細</h2>
+      <button class="modal-close" onclick="closeModal('notesModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="notesContent" style="white-space:pre-wrap;line-height:1.7;font-size:14px;color:var(--dark)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS MODAL -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📊 統計・サマリー</h2>
+      <button class="modal-close" onclick="closeModal('statsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="statsContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== 初期データ（CSVより転記済み） =====
+var INITIAL_DATA = [{"id":1,"rowNumber":1,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"日本郵船株式会社","projectName":"宇宙戦略基金（TRL4）その2","estimate":51430.0,"estimateDisplay":"51,430","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2026/10/30","notes":"TRL4分割その2。2026年10月受注予想。","updateTime":"2026-03-23 10:01:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":2,"rowNumber":2,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN172","customer":"MOL GLOBAL SHIP MANAGEMENT PTE. LTD. (Europe OƯice)","projectName":"Fleet Transfer Annual fee 2026 /MOL GLOBAL SHIP MANAGEMENT (Europe OƯice)保守費2026","estimate":596.0,"estimateDisplay":"596","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-23 10:29:30","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":3,"rowNumber":3,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN171","customer":"エム・エム・エス","projectName":"Fleet Transfer Annual fee 2026 (エム・エム・エス)保守費2026","estimate":600.0,"estimateDisplay":"600","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-18 16:54:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":4,"rowNumber":4,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"日本郵船","projectName":"宇宙戦略基金（TRL4）その1","estimate":63380.0,"estimateDisplay":"63,380","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"TRL3終了後、速やかに受注予定。\nTRL3作業進捗により、価格変更の可能性あり。\n3/2にTRL4に関する打合せ実施。打ち合わせ内容を踏まえ3/20目処に見積提出の上、基金の関係から3月中目処に契約予定。\n3/19作業種別が異なるため、見積を2分割することとなった。その1は3月中の受注を目指す。","updateTime":"2026-03-23 9:29:22","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":5,"rowNumber":5,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"FFM BL2 #1","estimate":81220.0,"estimateDisplay":"81,220","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"1/8三菱-MTSで当社発注に向け調整中。\n2/20　1艦毎の見積提出。3月初旬までに三菱重工-MTS契約の見通しのため、3月末までに当社受注となる見込。\n3/19MTS受注の連絡あり。","updateTime":"2026-03-23 9:17:15","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":6,"rowNumber":6,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"FFM BL2 #2","estimate":81220.0,"estimateDisplay":"81,220","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"1/8三菱-MTSで当社発注に向け調整中。\n2/20　1艦毎の見積提出。3月初旬までに三菱重工-MTS契約の見通しのため、3月末までに当社受注となる見込。\n3/19MTS受注の連絡あり。","updateTime":"2026-03-23 9:16:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":7,"rowNumber":7,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0892-00","customer":"商船三井","projectName":"ShipDCデータ連携調整作業(37隻)","estimate":370.0,"estimateDisplay":"370","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"FOCUSのデータをSHIPDCへ送信するにあたり必要となる、SHIPDCとの調整作業","updateTime":"2026-03-19 15:05:24","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":8,"rowNumber":8,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0872-00","customer":"商船三井","projectName":"Provision of MIMIC Configuration Sheet","estimate":770.0,"estimateDisplay":"770","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/03/31","notes":"1万円/隻(77隻分)にて見積提出。成果物は1ユニット（タグと計測点の紐づけ、絵のベース、各タグの位置）３点セットで提供。","updateTime":"2026-03-19 9:57:06","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":9,"rowNumber":9,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0899-00","customer":"商船三井","projectName":"Ethane Crystal/Fleet Transfer","estimate":4070.0,"estimateDisplay":"4,070","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"","updateTime":"2026-03-18 16:55:14","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":10,"rowNumber":10,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0890-00","customer":"商船三井","projectName":"BARISM BETTY/Fleet Transfer","estimate":4710.0,"estimateDisplay":"4,710","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"中国寄港時でのFT搭載予定","updateTime":"2026-03-18 16:55:01","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":11,"rowNumber":11,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"","customer":"seawise","projectName":"seawise向け業務支援（2026年4月～6月）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-03-18 16:54:19","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":12,"rowNumber":12,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"LNG MARS（サイバー対策) 2026/6/23　予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-03-17 11:12:19","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":13,"rowNumber":13,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"大島 11234 / Fleet Transfer (Concerto向け、竣工：2028/6）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-03-16 15:01:59","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":14,"rowNumber":14,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HUDONG H1794A / Fleet Transfer (竣工：2026/9/18","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：不明　海上公試日：2026/05/MD","updateTime":"2026-03-13 15:38:48","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":15,"rowNumber":15,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"KHI1771 / Fleet Transfer (竣工：2027/1/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：不明　引き渡し日：2027/3/31","updateTime":"2026-03-13 15:36:20","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":16,"rowNumber":16,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"KHI1772 / Fleet Transfer (竣工：2027/4/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：不明　引き渡し日：2027/6/30","updateTime":"2026-03-13 15:35:23","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":17,"rowNumber":17,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"NSユナイテッド","projectName":"FT/seawiseの提案","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田/相原","expectedDate":"","notes":"1/23 seawise紹介の訪問、次回要望ヒアリングのち提案予定\n先方が出張で不在の為、2/12（木）以降にアポ取得予定。（連絡調整も日程が近づかないと難しい）","updateTime":"2026-03-13 15:26:48","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":18,"rowNumber":18,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"三星重工2663 / Fleet Transfer (竣工：2027/1/15","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/12/9","updateTime":"2026-03-13 15:15:57","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":19,"rowNumber":19,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HANHWA OCEAN HO2558 / Fleet Transfer (竣工：2026/9/30","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/9/30","updateTime":"2026-03-13 15:14:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":20,"rowNumber":20,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"今治多度津F087 / Fleet Transfer (竣工：2026/11/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/11/26","updateTime":"2026-03-13 15:13:56","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":21,"rowNumber":21,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HANHWA OCEAN HO2576 / Fleet Transfer (竣工：2026/12/14","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/12/14","updateTime":"2026-03-13 15:13:17","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":22,"rowNumber":22,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"今治丸亀1938 / Fleet Transfer (竣工：2026/7/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/7/30","updateTime":"2026-03-13 15:12:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":23,"rowNumber":23,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"三星重工2687 / Fleet Transfer (竣工：2026/9/30","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/8/14","updateTime":"2026-03-13 15:12:03","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":24,"rowNumber":24,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"大島11163 / Fleet Transfer (海上公試：2027/1/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/03/FH","updateTime":"2026-03-13 15:11:22","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":25,"rowNumber":25,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HD HYUNDAI3515 / Fleet Transfer (竣工：2027/7/30","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/1/5","updateTime":"2026-03-13 15:09:49","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":26,"rowNumber":26,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"大島11162 / Fleet Transfer (海上公試：2026/10/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/12/MD","updateTime":"2026-03-13 15:09:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":27,"rowNumber":27,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"大島11134 / Fleet Transfer (海上公試：2026/6/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/11/FH","updateTime":"2026-03-13 15:08:34","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":28,"rowNumber":28,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HANHWA OCEAN HO2576 / Fleet Transfer (竣工：2026/12/31","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/12/14","updateTime":"2026-03-13 15:07:52","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":29,"rowNumber":29,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"QINGDAO BEIHAI(BC210K-83) / Fleet Transfer","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/3/6","updateTime":"2026-03-13 15:05:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":30,"rowNumber":30,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"QINGDAO BEIHAI(BC210K-86) / Fleet Transfer","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/11/6","updateTime":"2026-03-13 15:05:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":31,"rowNumber":31,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"QINGDAO BEIHAI(BC210K-85) / Fleet Transfer","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/9/17","updateTime":"2026-03-13 15:04:16","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":32,"rowNumber":32,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"QINGDAO BEIHAI(BC210K-84) / Fleet Transfer","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/6/9","updateTime":"2026-03-13 15:03:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":33,"rowNumber":33,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"HANHWA OCEAN HO2558 / Fleet Transfer (竣工：2026/9/30","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2026/9/30","updateTime":"2026-03-13 15:02:00","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":34,"rowNumber":34,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"KHI DACKS(大連)8113(DE174) / Fleet Transfer (竣工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2027/8/MD","updateTime":"2026-03-13 14:59:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":35,"rowNumber":35,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"KHI DACKS(大連)8114(DE175) / Fleet Transfer (竣工：2027/12/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"建造完了日：2028/1/MD","updateTime":"2026-03-13 14:58:16","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":36,"rowNumber":36,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"尾道造船","projectName":"外航タンカー向けMMSまたはゲートラダー用JOY","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"2027/12/27","notes":"1/9営業部山田氏より、ゲートラダー装備の外航タンカー2隻の建造情報を聴取。営業部と協力し、尾道造船設計部にMMS及びゲートラダー用JOYの説明を行うべく、まずは同社東京支店を訪問予定。並行して、実運用されている鶴見サンマリン「鶴伸丸」のゲートラダーJOYの実運用の状況などを聴取の上、月内を目処に尾道造船東京支社を訪問する。シス協賀詞交歓会にてゲートラダー用JOYを共同開発したかもめPに直接鶴見サンマリンとやりとりする許可取得。\n1/27　鶴見サンマリン川島工務監督と面談：ゲートラダーJOYの使い勝手については、特段問題なし。3月の修繕ドックの際に、モニター等の不具合を調整し、海上公試で確認の依頼あり。営業部山田さんと尾道造船訪問について日時相談する。\n4月上旬にて面談調整中、尾道にボールあり","updateTime":"2026-03-13 13:37:16","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":37,"rowNumber":37,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"大洋海運","projectName":"今治造船建造 新造船 FT搭載","estimate":3480.0,"estimateDisplay":"3,480","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"seawiseと連携し、3/24訪問時に見積書を提出予定。","updateTime":"2026-03-12 16:49:32","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":38,"rowNumber":38,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"田渕海運","projectName":"内航タンカー向けシステム操船装置（OACIS）案件","estimate":48000.0,"estimateDisplay":"48,000","status":"引合","priority":"中","person":"佐藤","expectedDate":"2026/04/30","notes":"2/27　田渕海運-下ノ江造船＠下ノ江造船にて打合せ実施。取引口座開設作業と並行して見積書の提出、協議を実施。多少のネゴは想定されるものの、システム操船装置自体においては大したネゴは無いのではないものと思慮。本船引渡は2027年10月予定。","updateTime":"2026-03-06 16:38:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":39,"rowNumber":39,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"「しもきた」向け離着岸操艦装置　装備工事","estimate":7213.0,"estimateDisplay":"7,213","status":"引合","priority":"中","person":"佐藤","expectedDate":"2027/02/26","notes":"契約及び納期年ズレ。","updateTime":"2026-03-06 16:35:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":40,"rowNumber":40,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"川崎汽船","projectName":"K-IMSとFTのデータ連携","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"KIMSのAPI仕様とseawise側の要求仕様との間にいくつかの重要なギャップが特定された為、昭島と連携し、船体の汚損度をスコア化して最適な塗装時期を提案するなど別確度からの提案も検討","updateTime":"2026-03-05 18:14:31","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":41,"rowNumber":41,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"オーシャンリンク","projectName":"動揺センサー追加工事","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"2/27訪問でロールピッチや加速度に興味があることを聴取。同社はFM全船搭載のトヨフジ海運の船舶を管理している。","updateTime":"2026-03-05 12:33:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":42,"rowNumber":42,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"トヨフジ海運","projectName":"新造船5隻 FT搭載","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"seawiseと連携し見積準備","updateTime":"2026-03-02 14:42:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":43,"rowNumber":43,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"「しもきた」向け舵減揺装置　装備工事","estimate":4687.0,"estimateDisplay":"4,687","status":"引合","priority":"中","person":"佐藤","expectedDate":"2027/02/26","notes":"契約及び納期年ズレ。","updateTime":"2026-02-19 13:03:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":44,"rowNumber":44,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"日本郵船","projectName":"SIMS2からFTへの換装（4隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"現在NYKビューワのBEMACと、FTとのデータ連携の技術的なすり合わせを行っている。→動揺センサについて、FT側でデータ受信が可能なこと確認。","updateTime":"2026-02-16 14:57:43","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":45,"rowNumber":45,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"ナカシマプロペラ","projectName":"洋上風力起重機船向けDPSレトロフィット（本間組）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"佐藤","expectedDate":"","notes":"2/5本間組（東京支店）-ナカシマP-T-SOLで面談実施。本案件は新潟本社在籍の渋谷機電部長が担当。DPSに知見がないため、具体的な検討ができるようフォローしてほしい。3月目処に訪問日時を調整する。","updateTime":"2026-02-06 19:48:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":46,"rowNumber":46,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"千葉市消防艇「まつかぜ」向けMMS","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"佐藤","expectedDate":"","notes":"1/30　SRCに進捗確認したが予定なし。MTS経由で作業船協会に確認する。","updateTime":"2026-02-02 15:29:39","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":47,"rowNumber":47,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"","customer":"常石造船","projectName":"常石向け業務支援（2027年上期）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"野村","expectedDate":"","notes":"","updateTime":"2026-02-02 14:49:12","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":48,"rowNumber":48,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石向け業務支援（2026年下期）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"野村","expectedDate":"","notes":"","updateTime":"2026-02-02 10:29:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":49,"rowNumber":49,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"KPRO","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:22:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":50,"rowNumber":50,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS404 / Fleet Transfer (起工：2028/3/30","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:22:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":51,"rowNumber":51,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC477 / Fleet Transfer (起工：2027/10/21","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:22:14","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":52,"rowNumber":52,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"Fleet Transfer常石造船向け（2026年度5隻 ?）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:22:04","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":53,"rowNumber":53,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC466 Fleet Transfer (起工：2026/4/1完工：2026/9/2","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:21:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":54,"rowNumber":54,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC476 / Fleet Transfer (起工：2027/7/1","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:21:41","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":55,"rowNumber":55,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS403 / Fleet Transfer (起工：2028/2/19","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:21:32","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":56,"rowNumber":56,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC469 / Fleet Transfer (起工：2027/5/5","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:21:22","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":57,"rowNumber":57,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC486 / Fleet Transfer (起工：2027/11/24","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:20:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":58,"rowNumber":58,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS368 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:20:34","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":59,"rowNumber":59,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"リーファコンテナ向けセンサーデータ収集","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:20:09","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":60,"rowNumber":60,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"今治 S-A321/ Fleet Transfer (リベラ向け、竣工：2027/6）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:19:57","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":61,"rowNumber":61,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC480 / Fleet Transfer (起工：2027/6/24","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:19:26","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":62,"rowNumber":62,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS383 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:19:15","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":63,"rowNumber":63,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS416 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:19:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":64,"rowNumber":64,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC467 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:18:56","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":65,"rowNumber":65,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石S1642 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:18:47","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":66,"rowNumber":66,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"大島 11142/ Fleet Transfer (リベラ向け、竣工：2027/1）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:17:47","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":67,"rowNumber":67,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"名村 624/ Fleet Transfer (リベラ向け、seawise連携）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:17:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":68,"rowNumber":68,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"名村 623/ Fleet Transfer (リベラ向け、seawise連携）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:16:59","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":69,"rowNumber":69,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"内海 860/ Fleet Transfer (リベラ向け、竣工：2026/9）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:16:06","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":70,"rowNumber":70,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"内海 868/ Fleet Transfer (リベラ向け、竣工：2027/7）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:15:51","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":71,"rowNumber":71,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC481 / Fleet Transfer (起工：2027/8/16","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:14:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":72,"rowNumber":72,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS400 / Fleet Transfer (起工：2027/10/26","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:14:42","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":73,"rowNumber":73,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC450 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:14:30","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":74,"rowNumber":74,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS388 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:14:08","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":75,"rowNumber":75,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SS389 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:13:55","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":76,"rowNumber":76,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"常石造船","projectName":"常石SC493 Fleet Transfer (起工：","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"石井","expectedDate":"","notes":"","updateTime":"2026-02-02 10:13:43","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":77,"rowNumber":77,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seaiwise","projectName":"seawise向け準委任（2026年下期）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"櫻田","expectedDate":"","notes":"","updateTime":"2026-02-02 10:08:32","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":78,"rowNumber":78,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"東京ガスエンジニアリングソリューションズ","projectName":"洋上風力向け台船用DPS","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"佐藤","expectedDate":"2027/12/27","notes":"1/8CTV事業を進めているきんでんからの紹介。洋上風力向けケーブル敷設船の建造を計画しているが、船のスペックから新造orレトロフィットの両案がある。引き続きフォローする。","updateTime":"2026-01-30 18:44:28","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":79,"rowNumber":79,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向けFleet Transfer修理（10隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:20:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":80,"rowNumber":80,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向けFleet Transfer訪船対応1（15隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:20:37","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":81,"rowNumber":81,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向け以外Fleet Transfer訪船対応1（10隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:20:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":82,"rowNumber":82,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向けFleet Transfer訪船対応2（15隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:20:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":83,"rowNumber":83,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向けFleet Transfer（2026年度5隻)","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:19:39","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":84,"rowNumber":84,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向けFleet Transfer修理2（10隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:19:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":85,"rowNumber":85,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"REIMEI（サイバー対策）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:18:37","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":86,"rowNumber":86,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"ORCHID ACE （サイバー対策)  2026/2/1 予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:18:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":87,"rowNumber":87,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"MARVELOUS ACE （サイバー対策)  2026/2/17 予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:18:03","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":88,"rowNumber":88,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"MORNING CREST （サイバー対策) 2026/3/29　予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:17:32","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":89,"rowNumber":89,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"ONE MOTIVATOR （サイバー対策) 2026/4/15　予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:17:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":90,"rowNumber":90,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"SUZUKASAN（サイバー対策) 2026/4/15　予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:16:55","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":91,"rowNumber":91,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"LNG FUKUROKUJU（サイバー対策) 2026/4/22　予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:16:39","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":92,"rowNumber":92,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"AZUMASAN（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:15:37","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":93,"rowNumber":93,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"MITAKE（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:15:25","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":94,"rowNumber":94,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"HORAISAN（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:15:12","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":95,"rowNumber":95,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"TOM PRICE（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:14:56","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":96,"rowNumber":96,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"CRYSTAL ACE（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:14:43","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":97,"rowNumber":97,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"ASTRAL ACE（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:14:25","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":98,"rowNumber":98,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"AURORA LIGHT（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:14:05","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":99,"rowNumber":99,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"LNG SATURN（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:13:15","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":100,"rowNumber":100,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"ELEGANT ACE（サイバー対策）ドック工事後回しした船","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:12:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":101,"rowNumber":101,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"EUPHONY ACE（サイバー対策) 2025/11/25 予定","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:12:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":102,"rowNumber":102,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"PRECIOUS ACE（サイバー対策）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:12:02","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":103,"rowNumber":103,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井向け以外Fleet Transfer訪船対応2（10隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:08:00","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":104,"rowNumber":104,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"商船三井以外向けFleet Transfer（2026年度8隻)","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 11:08:00","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":105,"rowNumber":105,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"リアルタイム送信MQTTリモート導入1(100隻)","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"2026/02/20","notes":"MOL内にて社内説明進行中","updateTime":"2026-01-28 9:57:35","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":106,"rowNumber":106,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"MOL Fleet Transfer 電子ログブック対応（個船対応50隻）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"プロトコル：SFTP","updateTime":"2026-01-28 9:56:52","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":107,"rowNumber":107,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"リアルタイム送信MQTTリモート導入2(100隻)","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"2026/02/20","notes":"MOL内にて社内説明進行中","updateTime":"2026-01-28 9:56:15","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":108,"rowNumber":108,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井テクノトレード","projectName":"ENERGY FRONTIER（サイバー対策）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"相原","expectedDate":"","notes":"","updateTime":"2026-01-28 9:55:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":109,"rowNumber":109,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"洞海マリンシステムズ","projectName":"洋上風力向け台船用DPS","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"佐藤","expectedDate":"","notes":"作業台船向けDPS（Class 2希望）　\n秋田県沖洋上風力（株式会社ウェンティ・ジャパンの業務委託？）　ケーブル敷設船。新造orレトロフィット。","updateTime":"2026-01-27 17:01:42","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":110,"rowNumber":110,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"ナカシマプロペラ","projectName":"洋上風力起重機船向けDPSレトロフィット（青山海事）","estimate":"","estimateDisplay":"","status":"引合","priority":"中","person":"佐藤","expectedDate":"","notes":"1/20ナカシマプロペラより問い合わせ受信、対応中。","updateTime":"2026-01-27 16:55:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":111,"rowNumber":111,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0802/01/01","customer":"商船三井テクノトレード","projectName":"TUBARAO MARU（サイバー対策）","estimate":320.0,"estimateDisplay":"320","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/03/31","notes":"","updateTime":"2026-03-24 9:47:38","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":112,"rowNumber":112,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0879-00","customer":"商船三井","projectName":"KHI DACKS(大連)8100(DE156) / Fleet Transfer (竣工：2027/1/1","estimate":4630.0,"estimateDisplay":"4,630","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"建造完了日：2026/10/MD","updateTime":"2026-03-23 12:00:57","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":113,"rowNumber":113,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0878-00","customer":"商船三井","projectName":"KHI DACKS(大連)8099(DE155) / Fleet Transfer (竣工：2026/9/1","estimate":4630.0,"estimateDisplay":"4,630","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"建造完了日：2026/6/SH","updateTime":"2026-03-23 11:59:25","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":114,"rowNumber":114,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"Synergy Oceanic Services India Pvt. Ltd.","projectName":"Synergy Oceanic Services India Pvt. Ltd 保守費2026","estimate":200.0,"estimateDisplay":"200","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/30","notes":"3/2→催促済、3/16→催促済","updateTime":"2026-03-16 13:07:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":115,"rowNumber":115,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"Synergy Onyx Marine Pvt Ltd","projectName":"Synergy Onyx Marine Pvt Ltd　保守費2026","estimate":680.0,"estimateDisplay":"680","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/30","notes":"3/2→催促済、3/16→催促済","updateTime":"2026-03-16 13:05:10","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":116,"rowNumber":116,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"MOL Tankship Management Pte. Ltd.","projectName":"MOL Tankship Management 保守費2026","estimate":6056.0,"estimateDisplay":"6,056","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/03/31","notes":"3/9メールにて催促済み","updateTime":"2026-03-09 11:42:52","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":117,"rowNumber":117,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"Fairmont Shipping (Canada) Ltd","projectName":"Fairmont Shipping (Canada) 保守費2026","estimate":200.0,"estimateDisplay":"200","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"3/9メールにて催促済み","updateTime":"2026-03-09 11:42:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":118,"rowNumber":118,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"Bernhard Schulte Shipmanagement (Hong Kong)","projectName":"BSM　香港　保守費2026","estimate":400.0,"estimateDisplay":"400","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"3/9メールにて催促済み","updateTime":"2026-03-09 11:42:09","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":119,"rowNumber":119,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三浦造船","projectName":"井本商運EVタンカー向けMMS（OACIS案件）","estimate":9692.0,"estimateDisplay":"9,692","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"環境省補助金案件で、とりまとめはMarindows。製造・調整・運転費用に関して三浦造船に発注いただく。\n2/27三浦造船殿と打合せ実施。新規取引の為、双方の取引口座開設完了次第受注の見込み。多少のネゴが発生する可能性あり。","updateTime":"2026-03-06 16:40:38","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":120,"rowNumber":120,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"seawise","projectName":"seawise 保守費2026","estimate":4876.0,"estimateDisplay":"4,876","status":"見積提出（高）","priority":"中","person":"櫻田","expectedDate":"2026/04/30","notes":"seawiseと確認中","updateTime":"2026-03-02 15:08:51","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":121,"rowNumber":121,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"正和航業","projectName":"正和航業 保守費2026","estimate":200.0,"estimateDisplay":"200","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"25年度(~3/31 )契約中のため、3月見積送付予定","updateTime":"2026-03-02 14:28:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":122,"rowNumber":122,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"日徳汽船","projectName":"日徳汽船 保守費2026","estimate":200.0,"estimateDisplay":"200","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"25年度(~3/31)契約中のため、3月見積送付予定","updateTime":"2026-03-02 14:28:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":123,"rowNumber":123,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"MOL ENERGIA","projectName":"MOL ENERGIA 保守費2026","estimate":92.0,"estimateDisplay":"92","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/30","notes":"3/2 催促予定","updateTime":"2026-03-02 14:21:17","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":124,"rowNumber":124,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"関西電力","projectName":"LNG FUKUROKUJU 保守費(2026/12/8-2027/3/7)","estimate":50.0,"estimateDisplay":"50","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2027/03/31","notes":"１２月受注予定","updateTime":"2026-03-02 14:09:31","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":125,"rowNumber":125,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"関西電力","projectName":"LNG FUKUROKUJU 保守費(2026/6/8-2026/9/7)","estimate":50.0,"estimateDisplay":"50","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/30","notes":"６月受注予定","updateTime":"2026-03-02 14:08:08","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":126,"rowNumber":126,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"関西電力","projectName":"LNG FUKUROKUJU 保守費(2026/9/8-2026/12/7)","estimate":50.0,"estimateDisplay":"50","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/09/30","notes":"９月受注予定","updateTime":"2026-03-02 14:07:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":127,"rowNumber":127,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"MAGSAYSAY MOL SHIP MANAGEMENT, INC.","projectName":"MAGSAYSAY MOL SHIP MANAGEMENT保守費2026","estimate":4024.0,"estimateDisplay":"4,024","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"移管や売船があり、対象船確認中","updateTime":"2026-03-02 14:02:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":128,"rowNumber":128,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"MOL Ship Management (Singapore) Pte., Ltd.","projectName":"MOL Ship Management (Singapore) 保守費2026","estimate":12696.0,"estimateDisplay":"12,696","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/04/30","notes":"移管や売船があり、対象船確認中","updateTime":"2026-03-02 14:01:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":129,"rowNumber":129,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"Synergy Maritime(India) Pvt. Ltd.","projectName":"Synergy Maritime(India) 保守費2026","estimate":800.0,"estimateDisplay":"800","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/30","notes":"3/2　催促予定。2024,2025年入金催促中","updateTime":"2026-03-02 13:55:34","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":130,"rowNumber":130,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"FFM BL2 #4","estimate":60000.0,"estimateDisplay":"60,000","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/10/30","notes":"1/8洋上補給支援機能について新造時搭載の打診をしたものの、搭載しない方向でほぼ決定。今後のLiDARを用いた機能の開発に影響が出る可能性大の為、先行して本機能の開発に着手ができるようMTSと協議する。2/6洋上補給支援機能を除いた見積提出の依頼あり。\n2/18洋上補給支援機能削除の見積提出済み。","updateTime":"2026-02-24 9:48:55","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":131,"rowNumber":131,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"FFM BL2 #3","estimate":60000.0,"estimateDisplay":"60,000","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/10/30","notes":"1/8洋上補給支援機能について新造時搭載の打診をしたものの、搭載しない方向でほぼ決定。今後のLiDARを用いた機能の開発に影響が出る可能性大の為、先行して本機能の開発に着手ができるようMTSと協議する。2/6洋上補給支援機能を除いた見積提出依頼あり。\n2/18洋上補給支援機能削除の見積提出済み。","updateTime":"2026-02-24 9:48:37","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":132,"rowNumber":132,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"R7年度保安庁測量船MMS","estimate":27400.0,"estimateDisplay":"27,400","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/12/25","notes":"予算積み上げ用見積提示済み。06HLと同型の為、当社にて受注予定。1/30MTSからMSBに見積提示済み。","updateTime":"2026-02-06 17:49:16","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":133,"rowNumber":133,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"","customer":"商船三井","projectName":"API導入（ABLOG）","estimate":1800.0,"estimateDisplay":"1,800","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/03/31","notes":"６万円/隻にて受注予定。それにあたりNDA締結準備中、現在MOL確認中。\n９月末までに完全移行。そこまでに３００隻全船に導入予定。パイロット導入２３隻分は確定済","updateTime":"2026-02-02 15:27:48","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":134,"rowNumber":134,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"ASEV #2向けシステム操艦装置","estimate":47000.0,"estimateDisplay":"47,000","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"1/30　3月上旬までにMTSが受注予定のため、3月末までに当社へ発注見込。","updateTime":"2026-01-30 18:39:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":135,"rowNumber":135,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"豪州向け国内建造艦#1向け自動操艦装置","estimate":130800.0,"estimateDisplay":"130,800","status":"見積提出（高）","priority":"中","person":"佐藤","expectedDate":"2026/03/31","notes":"1/8FFM#1、2同様、洋上補給支援機能は脱落する仕様となる可能性ありとのこと。三菱-MTSで確認中。","updateTime":"2026-01-27 17:07:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":136,"rowNumber":136,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三輪","projectName":"内航コンテナ船向けシステム操船装置運転調整費用（機能拡張版）（OACIS案件）","estimate":3210.0,"estimateDisplay":"3,210","status":"見積提出（高）","priority":"中","person":"相原","expectedDate":"2026/06/05","notes":"エヴァライン内航タンカー向けMMS。国交省NX補助金案件で船主は三輪。製造までは受注済みであるため、運転・調整費用。","updateTime":"2026-01-27 17:06:29","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":137,"rowNumber":137,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング","caseNo":"0877-00","customer":"商船三井","projectName":"SEABOURN SOJOURN Fleet Transfer（SAKURA OCEAN）","estimate":3560.0,"estimateDisplay":"3,560","status":"見積提出（低）","priority":"中","person":"相原","expectedDate":"2026/03/31","notes":"９月就航予定（SAKURA OCEAN）　見積提出済みだがクルーズ会社がFT負担することが難しいとのことで保留中","updateTime":"2026-03-18 16:54:22","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":138,"rowNumber":138,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"多目的巡視船向けDPS","estimate":201000.0,"estimateDisplay":"201,000","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2026/12/25","notes":"1/9FFM BL2の新規機能開発の影響を受ける可能性大。MTSと要協議。1/30　2月27日に三菱造船が応札予定。","updateTime":"2026-02-06 17:48:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":139,"rowNumber":139,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"金星丸代船向け舵減揺","estimate":12330.0,"estimateDisplay":"12,330","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2026/10/30","notes":"当初は舵減揺付きMMSを導入する予定であったが、予算の逼迫により舵減揺のみの採用となった。1/30　MTSよりシステム協会に確認する。","updateTime":"2026-01-30 18:41:25","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":140,"rowNumber":140,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"海鷹丸向けDPS","estimate":59050.0,"estimateDisplay":"59,050","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2029/03/30","notes":"1/30　最短でR9年度予算要求となる見込み。","updateTime":"2026-01-30 18:38:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":141,"rowNumber":141,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"海鷹丸向けMARCS","estimate":12250.0,"estimateDisplay":"12,250","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2029/03/30","notes":"1/30　最短でR9年度予算要求となる見込み。","updateTime":"2026-01-30 18:37:50","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":142,"rowNumber":142,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置","caseNo":"","customer":"ナカシマプロペラ","projectName":"えひめ丸代船向けシステム操船装置","estimate":15680.0,"estimateDisplay":"15,680","status":"見積提出（低）","priority":"中","person":"佐藤","expectedDate":"2026/07/30","notes":"MTS経由で見積提出。ナカシマ担当者からは当社採用は価格面で厳しい旨聞いている","updateTime":"2026-01-27 17:11:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":143,"rowNumber":143,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN165","customer":"関西電力","projectName":"Fleet Monitor保守利用料(2026/3/8～2026/6/7)/LNG FUKUROKUJU","estimate":50.0,"estimateDisplay":"50","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/08","notes":"FM保守費","updateTime":"2026-03-24 9:49:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":144,"rowNumber":144,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN168","customer":"商船三井テクノトレード","projectName":"AQUAMARINE ACE/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/06","notes":"","updateTime":"2026-03-18 16:55:28","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":145,"rowNumber":145,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN167","customer":"常石造船","projectName":"常石SC457 / Fleet Transfer","estimate":1930.0,"estimateDisplay":"1,930","status":"受注","priority":"中","person":"石井","expectedDate":"2026/03/13","notes":"FT搭載","updateTime":"2026-03-18 16:54:20","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":146,"rowNumber":146,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN169","customer":"seawise","projectName":"Libera Oshima 58BC No.11141 Q2 2026 向けFleet Transfer","estimate":3550.0,"estimateDisplay":"3,550","status":"受注","priority":"中","person":"櫻田","expectedDate":"2026/03/16","notes":"FT搭載","updateTime":"2026-03-18 16:54:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":147,"rowNumber":147,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN162","customer":"商船三井テクノトレード","projectName":"RMC RIGEL /Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/09","notes":"","updateTime":"2026-03-10 9:58:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":148,"rowNumber":148,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN163","customer":"商船三井","projectName":"RMC RIGEL Fleet Transfer-Telegraph Agent connection retrofit work","estimate":1360.0,"estimateDisplay":"1,360","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/05","notes":"","updateTime":"2026-03-10 9:58:51","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":149,"rowNumber":149,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN159","customer":"Bernhard Schulte Ship Management (India) Pvt. Ltd","projectName":"Fleet Transfer annual fee for 2026 / Bernhard Schulte Shipmanagement (India)保守費2026","estimate":1214.0,"estimateDisplay":"1,214","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-09 11:33:39","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":150,"rowNumber":150,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN161","customer":"Fleet Ship Management Pte Ltd.","projectName":"IRIS ACE/ Fleet Transfer PC for replacement","estimate":320.0,"estimateDisplay":"320","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/06","notes":"FTPCリプレース","updateTime":"2026-03-09 11:28:34","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":151,"rowNumber":151,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HNJ160","customer":"商船三井","projectName":"BRILLIANT DISCOVERY  Fleet Transfer復旧作業","estimate":320.0,"estimateDisplay":"320","status":"受注","priority":"中","person":"相原","expectedDate":"2026/03/06","notes":"","updateTime":"2026-03-09 11:26:54","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":152,"rowNumber":152,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置_受注","caseNo":"HJN154","customer":"三菱重工マリタイムシステムズ","projectName":"海洋観測艦「にちなん」向けDPS見積設計費","estimate":688.0,"estimateDisplay":"688","status":"受注","priority":"中","person":"佐藤","expectedDate":"2026/03/03","notes":"小口工事","updateTime":"2026-03-06 16:35:13","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":153,"rowNumber":153,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN158","customer":"商船三井","projectName":"Fleet Transfer annual fee for 2026 / 商船三井 鉄鋼原料船部保守費2026","estimate":4986.0,"estimateDisplay":"4,986","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-04 10:23:08","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":154,"rowNumber":154,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN132","customer":"常石造船","projectName":"SS409 Fleet Transfer","estimate":1930.0,"estimateDisplay":"1,930","status":"受注","priority":"中","person":"石井","expectedDate":"2026/02/03","notes":"","updateTime":"2026-03-03 14:44:09","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":155,"rowNumber":155,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN131","customer":"常石造船","projectName":"SS406/Fleet Transfer","estimate":1930.0,"estimateDisplay":"1,930","status":"受注","priority":"中","person":"石井","expectedDate":"2026/02/03","notes":"","updateTime":"2026-03-03 14:43:19","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":156,"rowNumber":156,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN135","customer":"seawise","projectName":"Maritime-SOL向け気象データ配信","estimate":1215.0,"estimateDisplay":"1,215","status":"受注","priority":"中","person":"櫻田","expectedDate":"2026/02/10","notes":"","updateTime":"2026-03-03 14:41:28","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":157,"rowNumber":157,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN124","customer":"古野電気","projectName":"2025年度 若鳥丸船内LANシステム点検作業","estimate":430.0,"estimateDisplay":"430","status":"受注","priority":"中","person":"村上","expectedDate":"2026/01/26","notes":"","updateTime":"2026-03-03 14:34:31","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":158,"rowNumber":158,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN153","customer":"商船三井さんふらわ（本部）","projectName":"Fleet Transfer annual fee for 2026 / 商船三井さんふらわあ保守費2026","estimate":316.0,"estimateDisplay":"316","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-03 14:31:36","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":159,"rowNumber":159,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN152","customer":"MOL (INDIA) PRIVATE LIMITED","projectName":"Fleet Transfer annual fee for 2026 / MOL(India)PRIVATE LIMITED保守費2026","estimate":400.0,"estimateDisplay":"400","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-03 14:30:52","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":160,"rowNumber":160,"dept":"ship_autonomous","deptName":"自律","sheetName":"自律_受注","caseNo":"HJN143","customer":"Ocean Advanced Control&Integrated Systems","projectName":"日本郵船向けEVタグのDPS制御演算関連請負","estimate":8600.0,"estimateDisplay":"8,600","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/16","notes":"契約納期：2026/8/31\n自律Gと操船シスGの連携一番船","updateTime":"2026-03-03 11:17:40","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":161,"rowNumber":161,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN121","customer":"商船三井さんふらわあ","projectName":"Fleet Transfer Annual fee 2026(さんふらわあ 第二船舶部)保守費","estimate":400.0,"estimateDisplay":"400","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:21:31","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":162,"rowNumber":162,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN120","customer":"MOL TANKSHIP MANAGEMENT PTE. LTD. (LONDON BRANCH)","projectName":"Fleet Transfer Annual fee 2026 / MOL Tankship Management (Euro) Pte. Ltd.保守費","estimate":2000.0,"estimateDisplay":"2,000","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:21:12","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":163,"rowNumber":163,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN116","customer":"商船三井","projectName":"Fleet Transfer Annual fee 2026(自動車船部)保守費","estimate":3768.0,"estimateDisplay":"3,768","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:20:52","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":164,"rowNumber":164,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN117","customer":"MOL LNG輸送","projectName":"Fleet Transfer Annual fee 2026/MOL GLOBAL SHIP MANAGEMENT PTE LTD. (JAPAN OFFICE)保守費","estimate":1200.0,"estimateDisplay":"1,200","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:20:32","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":165,"rowNumber":165,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN125","customer":"MOL Global Ship Management Pte. Ltd.","projectName":"Fleet Transfer Annual fee 2026(MOL Global Ship Management Pte. Ltd.)保守費","estimate":2540.0,"estimateDisplay":"2,540","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:20:09","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":166,"rowNumber":166,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN126","customer":"商船三井","projectName":"Fleet Transfer Annual fee 2026 (商船三井コンテナ船事業部)保守費","estimate":400.0,"estimateDisplay":"400","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:19:49","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":167,"rowNumber":167,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN127","customer":"商船三井ドライバルク","projectName":"Fleet Transfer Annual fee 2026 (商船三井ドライバルク)保守費","estimate":8064.0,"estimateDisplay":"8,064","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:19:09","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":168,"rowNumber":168,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN142","customer":"エム・オー・エル・シップマネージメント","projectName":"Fleet Transfer Annual fee 2026 / MOL GLOBAL SHIP MANAGEMENT PTE.LTD (Dry) Japan保守費","estimate":3170.0,"estimateDisplay":"3,170","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:18:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":169,"rowNumber":169,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN141","customer":"ユニバーサルマリン","projectName":"Fleet Transfer Annual fee 2026 (ユニバーサルマリン)保守費","estimate":400.0,"estimateDisplay":"400","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/01","notes":"保守費","updateTime":"2026-03-02 14:18:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":170,"rowNumber":170,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN147","customer":"商船三井ドライバルク","projectName":"名村624向けFleet Transfer","estimate":4760.0,"estimateDisplay":"4,760","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/20","notes":"","updateTime":"2026-03-02 13:23:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":171,"rowNumber":171,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN146","customer":"商船三井ドライバルク","projectName":"名村623向けFleet Transfer","estimate":4760.0,"estimateDisplay":"4,760","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/20","notes":"","updateTime":"2026-03-02 13:21:29","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":172,"rowNumber":172,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN145","customer":"オーシャンリンク","projectName":"TRANS FUTURE 8 Fleet Monitor復旧作業","estimate":380.0,"estimateDisplay":"380","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/20","notes":"","updateTime":"2026-03-02 13:06:07","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":173,"rowNumber":173,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN148","customer":"商船三井テクノトレード","projectName":"MORNING CREST/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/24","notes":"","updateTime":"2026-03-02 13:02:28","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":174,"rowNumber":174,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN151","customer":"商船三井テクノトレード","projectName":"EAGLE TRADER/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/26","notes":"","updateTime":"2026-03-02 13:02:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":175,"rowNumber":175,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN148","customer":"商船三井テクノトレード","projectName":"MORNING CREST/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/24","notes":"","updateTime":"2026-03-02 11:12:18","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":176,"rowNumber":176,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN138","customer":"瑞穂産業株式会社","projectName":"FMからFTへの換装（6隻）","estimate":2250.0,"estimateDisplay":"2,250","status":"受注","priority":"中","person":"櫻田","expectedDate":"2026/02/06","notes":"１月訪問時に、何かあった時にデータを参照する際に、１時間値では十分でなく、１分値のニーズがあると聴取した。そのため、Fleet Monitor船を全船Fleet Transferにアップグレードする提案を行う。ソフトのみでできる場合（35万）×５隻と、ソフト＋ハードが必要な場合（50万）×3隻（→2隻売船につき1隻）計225万円受注。","updateTime":"2026-02-24 9:28:12","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":177,"rowNumber":177,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN144","customer":"MOL GLOBAL SHIP MANAGEMENT PTE LTD. (JAPAN OFFICE)","projectName":"Fleet Transfer PC for replacement and configuration work for NOHSHU MARU","estimate":1000.0,"estimateDisplay":"1,000","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/19","notes":"Win7→Win10移行業務におけるPCリプレース","updateTime":"2026-02-20 10:17:33","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":178,"rowNumber":178,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置_受注","caseNo":"","customer":"三菱重工マリタイムシステムズ","projectName":"広島丸向けDPS","estimate":54570.0,"estimateDisplay":"54,570","status":"受注","priority":"中","person":"佐藤","expectedDate":"2026/02/27","notes":"12/23付けでMTSが受注登録中。まもなく当社受注の見込み。1/30　調達でストップしている。催促の依頼した。\n2/13　受注。","updateTime":"2026-02-19 13:04:21","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":179,"rowNumber":179,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN140","customer":"商船三井テクノトレ－ド","projectName":"HIKOSAN/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/10","notes":"","updateTime":"2026-02-16 14:50:45","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":180,"rowNumber":180,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN139","customer":"オーシャンリンク","projectName":"TRANS HARMONY 1 Fleet Monitor復旧作業","estimate":210.0,"estimateDisplay":"210","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/16","notes":"","updateTime":"2026-02-16 14:49:03","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":181,"rowNumber":181,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN133","customer":"seawise","projectName":"seawiseデータベース開発に対する業務支援（3か月）","estimate":1800.0,"estimateDisplay":"1,800","status":"受注","priority":"中","person":"野村","expectedDate":"2026/02/01","notes":"","updateTime":"2026-02-09 11:47:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":182,"rowNumber":182,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN134","customer":"MOL Ship Management (Singapore) Pte. Ltd.","projectName":"ONE MAGNIFICENCE/ Fleet Transfer PC for replacement","estimate":320.0,"estimateDisplay":"320","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/06","notes":"FTPCリプレース","updateTime":"2026-02-06 13:27:42","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":183,"rowNumber":183,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN130","customer":"商船三井テクノトレード","projectName":"AMETHYST ACE/Fleet Transferサイバーセキュリティ対策作業","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/04","notes":"","updateTime":"2026-02-06 13:23:06","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":184,"rowNumber":184,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN129","customer":"MOL GLOBAL SHIP MANAGEMENT PTE. LTD.","projectName":"LNG ROSENROT/Fleet Transfer for adapter replacement","estimate":80.0,"estimateDisplay":"80","status":"受注","priority":"中","person":"相原","expectedDate":"2026/02/04","notes":"FTアダプターリプレース","updateTime":"2026-02-06 13:21:16","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":185,"rowNumber":185,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN108","customer":"三井E&S","projectName":"新来島S6290/Fleet Transferアラームデータ送信設定作業","estimate":170.0,"estimateDisplay":"170","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/05","notes":"","updateTime":"2026-01-28 11:24:44","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":186,"rowNumber":186,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN110","customer":"商船三井テクノトレード","projectName":"VENUS SPIRIT （サイバー対策)  2026/1/18 予定","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2025/12/26","notes":"受注計上年月日：2026/1/1","updateTime":"2026-01-28 11:24:27","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":187,"rowNumber":187,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN109","customer":"商船三井テクノトレード","projectName":"MIRACULOUS ACE （サイバー対策) 2025/3月上旬　予定","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2025/12/24","notes":"受注計上年月日：2026/1/1","updateTime":"2026-01-28 11:24:06","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":188,"rowNumber":188,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN112","customer":"商船三井テクノトレード","projectName":"EAGLE TRADER（サイバー対策) 2026/4/15　予定","estimate":70.0,"estimateDisplay":"70","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/19","notes":"受注計上年月日：2026/01/19","updateTime":"2026-01-28 11:23:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":189,"rowNumber":189,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN111","customer":"オーシャンリンク","projectName":"TRANS FUTURE 1  Fleet Monitor訪船作業","estimate":300.0,"estimateDisplay":"300","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/13","notes":"受注計上年月日：2026/1/13","updateTime":"2026-01-28 11:23:20","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":190,"rowNumber":190,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN119","customer":"MOL Ship Management (Singapore ) Pte Ltd","projectName":"ONE MANEUVER/ Fleet Transfer PC for replacement","estimate":320.0,"estimateDisplay":"320","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/07","notes":"FT換用PC換装（工事不要）","updateTime":"2026-01-28 9:54:19","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":191,"rowNumber":191,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN122","customer":"商船三井テクノトレード","projectName":"BRILLIANT ACE （サイバー対策)","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/23","notes":"納入時期：3/11-3/13","updateTime":"2026-01-28 9:53:22","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":192,"rowNumber":192,"dept":"ship_monitoring","deptName":"モニタリング","sheetName":"モニタリング_受注","caseNo":"HJN115","customer":"商船三井テクノトレード","projectName":"ISLA DE BIOKO （サイバー対策)  2026/1/15 予定","estimate":305.0,"estimateDisplay":"305","status":"受注","priority":"中","person":"相原","expectedDate":"2026/01/21","notes":"受注計上年月日：2026/01/21","updateTime":"2026-01-28 9:51:04","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":193,"rowNumber":193,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置_受注","caseNo":"HJN123","customer":"海洋電子工業","projectName":"音響測定艦「あき」向けDCS　R7年度定期検査　交換部品","estimate":294.0,"estimateDisplay":"294","status":"受注","priority":"中","person":"佐藤","expectedDate":"","notes":"小口工事","updateTime":"2026-01-27 17:15:12","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":194,"rowNumber":194,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置_受注","caseNo":"HJN114","customer":"オリエンタルランド","projectName":"OLC向けMMS_遠隔操作箱修理及びプログラマブル表示器","estimate":450.0,"estimateDisplay":"450","status":"受注","priority":"中","person":"佐藤","expectedDate":"","notes":"小口工事","updateTime":"2026-01-27 17:14:46","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""},{"id":195,"rowNumber":195,"dept":"ship_control","deptName":"操船装置","sheetName":"操船装置_受注","caseNo":"HJN113","customer":"三菱重工マリタイムシステムズ","projectName":"若潮丸向けDPS　方位センサセンテンス変更対応","estimate":196.0,"estimateDisplay":"196","status":"受注","priority":"中","person":"佐藤","expectedDate":"","notes":"小口工事","updateTime":"2026-01-27 17:12:06","highlight":"","daysUntilDue":null,"isOverdue":false,"isLocked":false,"lockedBy":""}];
+
+// ===== LocalStorage キー =====
+var LS_KEY = 'funajikai_cases_v3';
+var LS_NEXT_ID = 'funajikai_next_id_v3';
+
+// ===== アプリ状態 =====
+var APP = {
+  allCases: [],
+  filtered: [],
+  dept: 'all',
+  sortKey: 'priority',
+  sortDir: 1,
+  page: 1,
+  ps: 50,
+  searchTimer: null,
+  sel: new Set(),
+  nextId: 1000
+};
+
+// ===== 初期化 =====
+window.addEventListener('load', function() {
+  loadFromStorage();
+  refreshUI();
+  updateSFStyles();
+});
+
+function loadFromStorage() {
+  try {
+    var saved = localStorage.getItem(LS_KEY);
+    var nid = localStorage.getItem(LS_NEXT_ID);
+    if (saved) {
+      APP.allCases = JSON.parse(saved);
+      APP.nextId = nid ? parseInt(nid, 10) : (APP.allCases.length + 1);
+      toast('保存データを読み込みました（' + APP.allCases.length + '件）', 'success', 2500);
+    } else {
+      APP.allCases = JSON.parse(JSON.stringify(INITIAL_DATA));
+      APP.nextId = APP.allCases.length + 1;
+      saveToStorage();
+    }
+  } catch(e) {
+    APP.allCases = JSON.parse(JSON.stringify(INITIAL_DATA));
+    APP.nextId = APP.allCases.length + 1;
+    saveToStorage();
+  }
+  recalcDates();
+}
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(APP.allCases));
+    localStorage.setItem(LS_NEXT_ID, String(APP.nextId));
+    var now = new Date();
+    var ts = (now.getMonth()+1)+'/'+now.getDate()+' '+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+    document.getElementById('lastSaved').textContent = '💾 保存: ' + ts;
+  } catch(e) {
+    toast('保存失敗: ストレージ容量不足の可能性があります', 'error');
+  }
+}
+
+function resetData() {
+  if (!confirm('初期データ（CSVデータ）に戻します。\n現在の変更はすべて失われます。\n\nよろしいですか？')) return;
+  APP.allCases = JSON.parse(JSON.stringify(INITIAL_DATA));
+  APP.nextId = APP.allCases.length + 1;
+  saveToStorage();
+  recalcDates();
+  refreshUI();
+  toast('初期データに戻しました', 'info');
+}
+
+function recalcDates() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  APP.allCases.forEach(function(c) {
+    if (c.expectedDate) {
+      var d = new Date(c.expectedDate.replace(/\//g, '-'));
+      if (!isNaN(d.getTime())) {
+        c.daysUntilDue = Math.ceil((d - today) / 86400000);
+        c.isOverdue = c.daysUntilDue < 0;
+      } else {
+        c.daysUntilDue = null; c.isOverdue = false;
+      }
+    } else {
+      c.daysUntilDue = null; c.isOverdue = false;
+    }
+    if (!c.highlight) c.highlight = '';
+    if (!c.priority) c.priority = '中';
+  });
+}
+
+// ===== UI更新 =====
+function refreshUI() {
+  updateDashboard();
+  applyFilter();
+}
+
+function updateDashboard() {
+  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var od=0,nd=0;
+  APP.allCases.forEach(function(c){
+    if(dt.hasOwnProperty(c.dept)) dt[c.dept]++;
+    if(c.status==='受注'){rc[c.dept]++;am[c.dept]+=(parseFloat(c.estimate)||0);}
+    if(c.isOverdue) od++;
+    else if(c.daysUntilDue!==null&&c.daysUntilDue<=7) nd++;
+  });
+  var tot=APP.allCases.length;
+  var trc=rc.ship_monitoring+rc.ship_control+rc.ship_autonomous;
+  var tra=am.ship_monitoring+am.ship_control+am.ship_autonomous;
+  var rate=tot>0?Math.round(trc/tot*100):0;
+  setText('totalCount',tot+'件');
+  setText('totalReceivedCount',trc+'件');
+  setText('totalReceivedAmount',Math.round(tra).toLocaleString());
+  setSW('totalProg',rate+'%');
+  [['ship_monitoring','mon'],['ship_control','ctl'],['ship_autonomous','aut']].forEach(function(x){
+    var t=dt[x[0]]||0,r=rc[x[0]]||0,a=am[x[0]]||0;
+    var rt=t>0?Math.round(r/t*100):0;
+    setText(x[1]+'Count',t+'件');
+    setText(x[1]+'ReceivedCount',r+'件');
+    setText(x[1]+'Amount',Math.round(a).toLocaleString());
+    setSW(x[1]+'Prog',rt+'%');
+  });
+  var od_el=document.getElementById('alertOverdue');
+  var nd_el=document.getElementById('alertNearDue');
+  if(od>0){od_el.style.display='flex';setText('overdueNum',od);}else od_el.style.display='none';
+  if(nd>0){nd_el.style.display='flex';setText('nearDueNum',nd);}else nd_el.style.display='none';
+}
+
+function applyFilter() {
+  var dept=APP.dept;
+  var sfs=Array.from(document.querySelectorAll('.sf:checked')).map(function(cb){return cb.value;});
+  var q=(document.getElementById('searchInput').value||'').trim();
+  var cases=APP.allCases.slice();
+  if(dept!=='all') cases=cases.filter(function(c){return c.dept===dept;});
+  if(sfs.length>0) cases=cases.filter(function(c){return sfs.indexOf(c.status)!==-1;});
+  if(q){
+    var tks=q.split(/\s+/).filter(Boolean).map(function(t){return t.toLowerCase();});
+    cases=cases.filter(function(c){
+      var hay=[c.deptName||'',c.caseNo||'',c.customer||'',c.projectName||'',c.status||'',c.person||'',c.priority||'',c.notes||''].join(' ').toLowerCase();
+      return tks.every(function(t){return hay.indexOf(t)!==-1;});
+    });
+  }
+  sortArr(cases);
+  APP.filtered=cases;
+  APP.page=1;
+  APP.sel.clear();
+  renderPage();
+}
+
+function sortArr(cases) {
+  var k=APP.sortKey,d=APP.sortDir;
+  var pR={'高':1,'中':2,'低':3};
+  var sR={'引合':1,'見積提出（高）':2,'見積提出（低）':3,'受注':4,'逸注':5};
+  cases.sort(function(a,b){
+    var av,bv;
+    if(k==='priority'){av=pR[a.priority]||99;bv=pR[b.priority]||99;}
+    else if(k==='status'){av=sR[a.status]||99;bv=sR[b.status]||99;}
+    else if(k==='estimate'){av=parseFloat(a.estimate)||0;bv=parseFloat(b.estimate)||0;}
+    else if(k==='expectedDate'||k==='updateTime'){
+      av=a[k]?new Date(a[k].replace(/\//g,'-')).getTime():0;
+      bv=b[k]?new Date(b[k].replace(/\//g,'-')).getTime():0;
+    }
+    else{av=(a[k]||'').toLowerCase();bv=(b[k]||'').toLowerCase();}
+    return av<bv?-d:av>bv?d:0;
+  });
+}
+
+function renderPage() {
+  var all=APP.filtered,tot=all.length,ps=APP.ps,page=APP.page;
+  var tp=Math.max(1,Math.ceil(tot/ps));
+  if(page>tp) page=APP.page=1;
+  var s=(page-1)*ps,e=Math.min(s+ps,tot);
+  var dn=APP.dept==='all'?'全部署':getDN(APP.dept);
+  document.getElementById('tblMeta').textContent=dn+' | '+tot+'件中 '+(tot?s+1:0)+'〜'+e+'件表示'+(APP.sel.size?' | '+APP.sel.size+'件選択':'');
+  renderTbody(all.slice(s,e),s);
+  renderPaging(page,tp,tot);
+}
+
+function renderTbody(cases,offset) {
+  var tbody=document.getElementById('tbody');
+  if(!cases||!cases.length){
+    tbody.innerHTML='<tr><td colspan="14"><div class="empty-state"><div class="empty-icon">📭</div><div>条件に合う案件がありません</div></div></td></tr>';
+    return;
+  }
+  var rows='';
+  cases.forEach(function(c,i){
+    var gi=offset+i;
+    var hlCls=c.highlight==='赤'?'hl-red':c.highlight==='黄'?'hl-yellow':c.highlight==='緑'?'hl-green':'';
+    var ck=APP.sel.has(gi)?'checked':'';
+    var sBadge='<span class="status-badge '+({'引合':'s-引合','見積提出（高）':'s-見積提出高','見積提出（低）':'s-見積提出低','受注':'s-受注','逸注':'s-逸注'}[c.status]||'')+'">'+ E(c.status||'')+'</span>';
+    var pBadge='<span class="priority-badge p-'+(c.priority||'中')+'">'+E(c.priority||'中')+'</span>';
+    var dueD=E(c.expectedDate||'');
+    if(c.expectedDate){
+      if(c.isOverdue) dueD='<span class="due-badge due-overdue">⚠️'+E(c.expectedDate)+'</span>';
+      else if(c.daysUntilDue!==null&&c.daysUntilDue<=7) dueD='<span class="due-badge due-near">⏰'+E(c.expectedDate)+'('+c.daysUntilDue+'日)</span>';
+    }
+    var hasN=c.notes&&c.notes.trim()!=='';
+    var noteShort=hasN?(c.notes.length>28?c.notes.substring(0,28)+'…':c.notes):'';
+    var hlR=c.highlight?({'赤':'red','黄':'yellow','緑':'green'}[c.highlight]||''):'';
+    rows+='<tr class="'+hlCls+'">';
+    rows+='<td class="select-col"><input type="checkbox" class="row-ck" data-gi="'+gi+'" '+ck+' onchange="onRowCk(this)"></td>';
+    rows+='<td><span class="dept-badge">'+E(c.deptName||'')+'</span></td>';
+    rows+='<td style="font-family:monospace;font-size:11px;white-space:nowrap">'+E(c.caseNo||'')+'</td>';
+    rows+='<td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+E(c.customer||'')+'">'+E(c.customer||'')+'</td>';
+    rows+='<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+E(c.projectName||'')+'">'+E(c.projectName||'')+'</td>';
+    rows+='<td style="text-align:right;font-weight:700">'+(c.estimate?(parseFloat(c.estimate)||0).toLocaleString():'')+'</td>';
+    rows+='<td>'+sBadge+'</td>';
+    rows+='<td>'+pBadge+'</td>';
+    rows+='<td style="white-space:nowrap">'+E(c.person||'')+'</td>';
+    rows+='<td class="notes-cell'+(hasN?' has-notes':'')+'" onclick="openNotes('+gi+')" title="'+(hasN?E(c.notes):'備考なし')+'">'+E(noteShort)+'</td>';
+    rows+='<td style="white-space:nowrap">'+dueD+'</td>';
+    rows+='<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+E(c.updateTime||'')+'</td>';
+    rows+='<td><div class="hl-btns">';
+    rows+='<button class="hl-btn red'+(hlR==='red'?' active':'')+'" onclick="setHL('+gi+',\x27赤\x27)" title="赤マーク"></button>';
+    rows+='<button class="hl-btn yellow'+(hlR==='yellow'?' active':'')+'" onclick="setHL('+gi+',\x27黄\x27)" title="黄マーク"></button>';
+    rows+='<button class="hl-btn green'+(hlR==='green'?' active':'')+'" onclick="setHL('+gi+',\x27緑\x27)" title="緑マーク"></button>';
+    rows+='<button class="hl-clear" onclick="setHL('+gi+',\x27\x27)" title="解除">✕</button>';
+    rows+='</div></td>';
+    rows+='<td><div class="row-actions"><button class="btn-sm btn-edit" onclick="openEdit('+gi+')">編集</button><button class="btn-sm btn-del" onclick="delCase('+gi+')">削除</button></div></td>';
+    rows+='</tr>';
+  });
+  tbody.innerHTML=rows;
+}
+
+function renderPaging(page,tp,tot) {
+  var el=document.getElementById('pagination');
+  if(tp<=1){el.innerHTML='';return;}
+  var h='<button class="page-btn" onclick="goPage('+(page-1)+')" '+(page<=1?'disabled':'')+'>‹ 前</button>';
+  var s=Math.max(1,page-2),e=Math.min(tp,page+2);
+  if(s>1){h+='<button class="page-btn" onclick="goPage(1)">1</button>';if(s>2)h+='<span style="padding:0 4px">…</span>';}
+  for(var p=s;p<=e;p++) h+='<button class="page-btn'+(p===page?' active':'')+'" onclick="goPage('+p+')">'+p+'</button>';
+  if(e<tp){if(e<tp-1)h+='<span style="padding:0 4px">…</span>';h+='<button class="page-btn" onclick="goPage('+tp+')">'+tp+'</button>';}
+  h+='<button class="page-btn" onclick="goPage('+(page+1)+')" '+(page>=tp?'disabled':'')+'>次 ›</button>';
+  h+='<span style="font-size:12px;color:var(--muted);padding:0 10px">全'+tot+'件</span>';
+  el.innerHTML=h;
+}
+
+function goPage(p){APP.page=p;APP.sel.clear();renderPage();}
+
+// ===== フィルター =====
+function setDept(d,btn){
+  APP.dept=d;
+  document.querySelectorAll('.dept-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  applyFilter();
+}
+
+function onSearch(){clearTimeout(APP.searchTimer);APP.searchTimer=setTimeout(applyFilter,200);}
+function onSF(){updateSFStyles();applyFilter();}
+function updateSFStyles(){
+  document.querySelectorAll('.sfl').forEach(function(l){
+    l.classList.toggle('ck',l.querySelector('input').checked);
+  });
+}
+
+function filterByAlert(type){
+  document.querySelectorAll('.sf').forEach(function(cb){cb.checked=cb.value!=='逸注';});
+  updateSFStyles();
+  APP.dept='all';
+  document.querySelectorAll('.dept-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelector('.dept-btn').classList.add('active');
+  recalcDates();
+  if(type==='overdue') APP.filtered=APP.allCases.filter(function(c){return c.isOverdue;});
+  else APP.filtered=APP.allCases.filter(function(c){return !c.isOverdue&&c.daysUntilDue!==null&&c.daysUntilDue<=7;});
+  APP.page=1;renderPage();
+}
+
+// ===== ソート =====
+function sortBy(key){
+  if(APP.sortKey===key) APP.sortDir=-APP.sortDir; else{APP.sortKey=key;APP.sortDir=1;}
+  document.querySelectorAll('th').forEach(function(th){th.classList.remove('sort-asc','sort-desc');});
+  var ths=document.querySelectorAll('#mainTable th');
+  var keyMap={deptName:1,caseNo:2,customer:3,projectName:4,estimate:5,status:6,priority:7,person:8,expectedDate:10,updateTime:11};
+  if(keyMap[key]){ths[keyMap[key]].classList.add(APP.sortDir===1?'sort-asc':'sort-desc');}
+  applyFilter();
+}
+
+// ===== 選択 =====
+function onRowCk(el){var gi=parseInt(el.getAttribute('data-gi'),10);if(el.checked)APP.sel.add(gi);else APP.sel.delete(gi);updateSelCount();}
+function toggleSelAll(cb){
+  var s=(APP.page-1)*APP.ps,e=Math.min(s+APP.ps,APP.filtered.length);
+  for(var i=s;i<e;i++){if(cb.checked)APP.sel.add(i);else APP.sel.delete(i);}
+  document.querySelectorAll('.row-ck').forEach(function(c){c.checked=cb.checked;});
+  updateSelCount();
+}
+function selectAllVisible(){for(var i=0;i<APP.filtered.length;i++)APP.sel.add(i);document.querySelectorAll('.row-ck').forEach(function(c){c.checked=true;});document.getElementById('selAllCb').checked=true;updateSelCount();}
+function clearSel(){APP.sel.clear();document.querySelectorAll('.row-ck').forEach(function(c){c.checked=false;});document.getElementById('selAllCb').checked=false;updateSelCount();}
+function updateSelCount(){
+  var dn=APP.dept==='all'?'全部署':getDN(APP.dept);
+  var tot=APP.filtered.length,s=(APP.page-1)*APP.ps,e=Math.min(s+APP.ps,tot);
+  document.getElementById('tblMeta').textContent=dn+' | '+tot+'件中 '+(tot?s+1:0)+'〜'+e+'件表示'+(APP.sel.size?' | '+APP.sel.size+'件選択':'');
+}
+
+// ===== 一括操作 =====
+function applyBulk(){
+  var act=document.getElementById('bulkAction').value;
+  if(!act){toast('操作を選択してください','warning');return;}
+  if(APP.sel.size===0){toast('案件を選択してください','warning');return;}
+  var idxArr=Array.from(APP.sel);
+  var msg='';
+  if(act==='delete'){
+    if(!confirm(APP.sel.size+'件を削除しますか？'))return;
+    var toDelIds=idxArr.map(function(i){return APP.filtered[i]&&APP.filtered[i].id;}).filter(Boolean);
+    APP.allCases=APP.allCases.filter(function(c){return toDelIds.indexOf(c.id)===-1;});
+    msg=APP.sel.size+'件を削除しました';
+  } else if(act.startsWith('status_')){
+    var newStat=act.replace('status_','');
+    idxArr.forEach(function(i){
+      var c=APP.filtered[i];
+      if(!c)return;
+      var orig=APP.allCases.find(function(x){return x.id===c.id;});
+      if(orig){orig.status=newStat;orig.updateTime=now();}
+    });
+    msg=APP.sel.size+'件のステータスを変更しました';
+  } else if(act.startsWith('hl_')){
+    var col=act.replace('hl_','');
+    idxArr.forEach(function(i){
+      var c=APP.filtered[i];
+      if(!c)return;
+      var orig=APP.allCases.find(function(x){return x.id===c.id;});
+      if(orig) orig.highlight=col;
+    });
+    msg=APP.sel.size+'件のハイライトを変更しました';
+  }
+  saveToStorage();
+  recalcDates();
+  refreshUI();
+  document.getElementById('bulkAction').value='';
+  clearSel();
+  toast(msg,'success');
+}
+
+// ===== CRUD =====
+function submitAdd(event) {
+  event.preventDefault();
+  var dept=document.getElementById('aDept').value;
+  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'};
+  var pfx={ship_monitoring:'MON',ship_control:'CTL',ship_autonomous:'AUT'};
+  var yr=new Date().getFullYear();
+  var cNo=document.getElementById('aCaseNo').value||(pfx[dept]+'-'+yr+'-'+String(APP.nextId).padStart(4,'0'));
+  var estRaw=document.getElementById('aEstimate').value.replace(/,/g,'');
+  var c={
+    id:APP.nextId++,rowNumber:APP.nextId,dept:dept,deptName:dN[dept]||dept,sheetName:dN[dept]||dept,
+    caseNo:cNo,customer:document.getElementById('aCustomer').value,
+    projectName:document.getElementById('aProject').value,
+    estimate:estRaw?parseFloat(estRaw):null,
+    estimateDisplay:estRaw?(parseInt(estRaw)||0).toLocaleString():'',
+    status:document.getElementById('aStatus').value,
+    priority:document.getElementById('aPriority').value,
+    person:document.getElementById('aPerson').value,
+    expectedDate:document.getElementById('aDate').value.replace(/-/g,'/'),
+    notes:document.getElementById('aNotes').value,
+    updateTime:now(),highlight:'',isOverdue:false,daysUntilDue:null,isLocked:false,lockedBy:''
+  };
+  APP.allCases.unshift(c);
+  saveToStorage();
+  recalcDates();
+  closeModal('addModal');
+  refreshUI();
+  toast('案件を登録しました: '+c.caseNo,'success');
+  return false;
+}
+
+function openEdit(gi) {
+  var c=APP.filtered[gi];
+  if(!c){toast('案件が見つかりません','error');return;}
+  document.getElementById('eId').value=c.id;
+  document.getElementById('eDept').value=c.dept||'ship_monitoring';
+  document.getElementById('eCaseNo').value=c.caseNo||'';
+  document.getElementById('eCustomer').value=c.customer||'';
+  document.getElementById('ePerson').value=c.person||'';
+  document.getElementById('eProject').value=c.projectName||'';
+  document.getElementById('eEstimate').value=c.estimate?(parseFloat(c.estimate)||0).toLocaleString():'';
+  document.getElementById('eStatus').value=c.status||'引合';
+  document.getElementById('ePriority').value=c.priority||'中';
+  var ed=c.expectedDate?c.expectedDate.replace(/\//g,'-'):'';
+  document.getElementById('eDate').value=ed;
+  document.getElementById('eNotes').value=c.notes||'';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function submitEdit(event) {
+  event.preventDefault();
+  var id=parseInt(document.getElementById('eId').value,10);
+  var c=APP.allCases.find(function(x){return x.id===id;});
+  if(!c){toast('案件が見つかりません','error');return false;}
+  var dept=document.getElementById('eDept').value;
+  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'};
+  var estRaw=document.getElementById('eEstimate').value.replace(/,/g,'');
+  c.dept=dept; c.deptName=dN[dept]||dept; c.sheetName=dN[dept]||dept;
+  c.caseNo=document.getElementById('eCaseNo').value;
+  c.customer=document.getElementById('eCustomer').value;
+  c.projectName=document.getElementById('eProject').value;
+  c.estimate=estRaw?parseFloat(estRaw):null;
+  c.estimateDisplay=estRaw?(parseInt(estRaw)||0).toLocaleString():'';
+  c.status=document.getElementById('eStatus').value;
+  c.priority=document.getElementById('ePriority').value;
+  c.person=document.getElementById('ePerson').value;
+  c.expectedDate=document.getElementById('eDate').value.replace(/-/g,'/');
+  c.notes=document.getElementById('eNotes').value;
+  c.updateTime=now();
+  saveToStorage();
+  recalcDates();
+  closeModal('editModal');
+  refreshUI();
+  toast('案件を更新しました','success');
+  return false;
+}
+
+function delCase(gi) {
+  var c=APP.filtered[gi];
+  if(!c)return;
+  if(!confirm('「'+c.projectName+'」を削除しますか？\n\nこの操作は取り消せません。'))return;
+  APP.allCases=APP.allCases.filter(function(x){return x.id!==c.id;});
+  saveToStorage();
+  recalcDates();
+  refreshUI();
+  toast('案件を削除しました','success');
+}
+
+// ===== ハイライト =====
+function setHL(gi,col){
+  var c=APP.filtered[gi];
+  if(!c)return;
+  var orig=APP.allCases.find(function(x){return x.id===c.id;});
+  if(orig) orig.highlight=col;
+  saveToStorage();
+  renderPage();
+}
+
+// ===== 備考モーダル =====
+function openNotes(gi){
+  var c=APP.filtered[gi];
+  document.getElementById('notesContent').textContent=(c&&c.notes)?c.notes:'備考なし';
+  document.getElementById('notesModal').classList.add('active');
+}
+
+// ===== 統計モーダル =====
+function openStatsModal(){
+  document.getElementById('statsModal').classList.add('active');
+  var cases=APP.allCases;
+  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var bs={},bp={},totalE=0,recvE=0;
+  cases.forEach(function(c){
+    if(dt.hasOwnProperty(c.dept)) dt[c.dept]++;
+    if(c.status==='受注'){rc[c.dept]++;am[c.dept]+=(parseFloat(c.estimate)||0);}
+    bs[c.status]=(bs[c.status]||0)+1;
+    bp[c.priority||'中']=(bp[c.priority||'中']||0)+1;
+    if(c.estimate){var v=parseFloat(c.estimate);if(!isNaN(v)){totalE+=v;if(c.status==='受注')recvE+=v;}}
+  });
+  var rr=totalE>0?Math.round(recvE/totalE*100):0;
+  var h='<div class="stats-grid">';
+  h+='<div class="stats-card"><h4>📁 部署別件数</h4>';
+  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d){
+    h+='<div class="stats-row"><span>'+d[1]+'</span><span class="stats-row-value">'+(dt[d[0]]||0)+'件 (受注'+(rc[d[0]]||0)+'件)</span></div>';
+  });
+  h+='</div>';
+  h+='<div class="stats-card"><h4>📊 ステータス別件数</h4>';
+  ['引合','見積提出（高）','見積提出（低）','受注','逸注'].forEach(function(s){
+    h+='<div class="stats-row"><span>'+s+'</span><span class="stats-row-value">'+(bs[s]||0)+'件</span></div>';
+  });
+  h+='</div>';
+  h+='<div class="stats-card"><h4>🔥 優先度別件数</h4>';
+  ['高','中','低'].forEach(function(p){
+    h+='<div class="stats-row"><span>'+p+'</span><span class="stats-row-value">'+(bp[p]||0)+'件</span></div>';
+  });
+  h+='</div>';
+  h+='<div class="stats-card"><h4>💰 金額サマリー</h4>';
+  h+='<div class="stats-row"><span>総見積金額</span><span class="stats-row-value">'+Math.round(totalE).toLocaleString()+'千円</span></div>';
+  h+='<div class="stats-row"><span>受注金額合計</span><span class="stats-row-value">'+Math.round(recvE).toLocaleString()+'千円</span></div>';
+  h+='<div class="stats-row"><span>受注金額率</span><span class="stats-row-value">'+rr+'%</span></div>';
+  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d){
+    h+='<div class="stats-row"><span>　'+d[1]+'受注</span><span class="stats-row-value">'+Math.round(am[d[0]]||0).toLocaleString()+'千円</span></div>';
+  });
+  h+='</div></div>';
+  document.getElementById('statsContent').innerHTML=h;
+}
+
+// ===== CSV出力 =====
+function exportCSV(){
+  var cases=APP.filtered.length?APP.filtered:APP.allCases;
+  var header=['部署','案件No','顧客名','案件名','見積額(千円)','ステータス','優先度','担当者','受注予定日','備考','更新日時'];
+  var rows=[header.join(',')];
+  cases.forEach(function(c){
+    var cols=[c.deptName||'',c.caseNo||'',c.customer||'',c.projectName||'',c.estimate||'',c.status||'',c.priority||'',c.person||'',c.expectedDate||'',c.notes||'',c.updateTime||''];
+    rows.push(cols.map(function(v){return '"'+String(v).replace(/"/g,'""').replace(/\n/g,' ')+'"';}).join(','));
+  });
+  var bom='\uFEFF';
+  var blob=new Blob([bom+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='引合リスト_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast(cases.length+'件をCSV出力しました','success');
+}
+
+// ===== ページサイズ =====
+function onPageSize(){APP.ps=parseInt(document.getElementById('pageSizeSel').value,10)||50;applyFilter();}
+
+// ===== モーダル =====
+function openAddModal(){
+  document.getElementById('addModal').classList.add('active');
+  document.getElementById('addForm').reset();
+  document.getElementById('aPriority').value='中';
+}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+
+// ===== TOAST =====
+function toast(msg,type,dur){
+  type=type||'info';dur=dur||3000;
+  var ct=document.getElementById('toastContainer');
+  var el=document.createElement('div');
+  el.className='toast toast-'+type;
+  el.textContent=msg;
+  ct.appendChild(el);
+  setTimeout(function(){el.style.opacity='0';el.style.transform='translateX(50px)';el.style.transition='all .3s';setTimeout(function(){if(el.parentNode)ct.removeChild(el);},300);},dur);
+}
+
+// ===== UTILS =====
+function setText(id,t){var el=document.getElementById(id);if(el)el.textContent=t;}
+function setSW(id,w){var el=document.getElementById(id);if(el)el.style.width=w;}
+function getDN(k){return{ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'}[k]||k;}
+function E(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fmtEst(el){var v=el.value.replace(/,/g,'').replace(/[^0-9]/g,'');el.value=v?parseInt(v,10).toLocaleString():'';}
+function now(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+function pad(n){return n<10?'0'+n:String(n);}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') document.querySelectorAll('.modal-overlay.active').forEach(function(m){m.classList.remove('active');});
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();document.getElementById('searchInput').focus();}
+});
+</script>
+</body>
+</html>
