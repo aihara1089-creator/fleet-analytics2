@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>船事開 引合い管理システム v2.0</title>
+  <style>
+    /* ===== リセット & ベース ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5a67d8;
+      --secondary: #764ba2;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --info: #3498db;
+      --light: #f8f9fa;
+      --dark: #2c3e50;
+      --muted: #7f8c8d;
+      --border: #ecf0f1;
+      --shadow: 0 4px 15px rgba(0,0,0,0.12);
+      --shadow-hover: 0 8px 25px rgba(0,0,0,0.2);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', Arial, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      min-height: 100vh;
+      padding: 16px;
+      color: var(--dark);
+    }
+    .container { max-width: 1900px; margin: 0 auto; }
+
+    /* ===== ヘッダー ===== */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 {
+      color: white;
+      font-size: 26px;
+      font-weight: 700;
+      text-shadow: 1px 2px 6px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .version-badge {
+      background: rgba(255,255,255,0.25);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .alert-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .alert-badge:hover { transform: scale(1.05); }
+    .alert-overdue { background: #ffe0e0; color: #c0392b; }
+    .alert-neardue { background: #fff3cd; color: #856404; }
+    .refresh-clock {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* ===== ダッシュボード ===== */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: white;
+      padding: 18px 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      text-align: center;
+      transition: transform 0.25s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+    .card-total::before { background: linear-gradient(90deg, #fff, rgba(255,255,255,0.5)); }
+    .card-total {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+    }
+    .card h3 {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .card-total h3 { color: rgba(255,255,255,0.85); }
+    .card-stat-row { display: flex; justify-content: space-around; gap: 8px; }
+    .card-stat { flex: 1; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .card-total .stat-label { color: rgba(255,255,255,0.7); }
+    .stat-value { font-size: 22px; font-weight: 800; color: var(--info); }
+    .card-total .stat-value { color: white; }
+    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .card-total .stat-sub { color: rgba(255,255,255,0.7); }
+    .progress-bar-wrap { margin-top: 10px; background: rgba(0,0,0,0.08); border-radius: 4px; height: 5px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--success), #2ecc71); border-radius: 4px; transition: width 0.5s; }
+    .card-total .progress-bar-wrap { background: rgba(255,255,255,0.25); }
+    .card-total .progress-bar { background: rgba(255,255,255,0.8); }
+
+    /* ===== コントロールパネル ===== */
+    .control-panel {
+      background: white;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .control-row-1 {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .control-row-2 {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .dept-filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dept-btn {
+      padding: 9px 18px;
+      border: 2px solid var(--info);
+      border-radius: var(--radius-sm);
+      background: white;
+      color: var(--info);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.25s;
+      white-space: nowrap;
+    }
+    .dept-btn:hover { background: #ebf5fb; transform: translateY(-1px); }
+    .dept-btn.active {
+      background: var(--info);
+      color: white;
+      box-shadow: 0 3px 10px rgba(52,152,219,0.4);
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 220px; }
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 12px 10px 36px;
+      border: 2px solid #ddd;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+    .search-wrap input:focus { outline: none; border-color: var(--info); }
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+    .status-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .status-filter-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1.5px solid #ddd;
+      transition: all 0.2s;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .status-filter-label:hover { border-color: var(--info); }
+    .status-filter-label input { display: none; }
+    .status-filter-label.checked { border-color: transparent; color: white; }
+    .status-filter-label.checked.sf-引合 { background: #1976d2; }
+    .status-filter-label.checked.sf-見積高 { background: #f57c00; }
+    .status-filter-label.checked.sf-見積低 { background: #e65100; }
+    .status-filter-label.checked.sf-受注 { background: var(--success); }
+    .status-filter-label.checked.sf-逸注 { background: var(--danger); }
+    .action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    .btn {
+      padding: 9px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.25s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--info); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-danger  { background: var(--danger); color: white; }
+    .btn-dark    { background: var(--dark); color: white; }
+    .btn-outline { background: white; color: var(--dark); border: 2px solid #ddd; }
+    .btn-outline:hover:not(:disabled) { border-color: var(--info); color: var(--info); }
+
+    /* ===== テーブル ===== */
+    .table-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: white;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border-bottom: 2px solid var(--border);
+    }
+    .table-meta-left { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .bulk-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .bulk-actions select {
+      padding: 6px 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .table-container {
+      background: white;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; }
+    th {
+      padding: 13px 10px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    th:hover { background: rgba(255,255,255,0.1); }
+    th .sort-icon { margin-left: 4px; opacity: 0.5; font-size: 10px; }
+    th.sort-asc .sort-icon::after { content: '▲'; opacity: 1; }
+    th.sort-desc .sort-icon::after { content: '▼'; opacity: 1; }
+    th.no-sort { cursor: default; }
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      vertical-align: middle;
+      transition: background 0.15s;
+    }
+    tbody tr:hover td { background: #f4f6fb !important; }
+    .highlight-red  td { background: #fff0f0 !important; }
+    .highlight-yellow td { background: #fffbf0 !important; }
+    .highlight-green  td { background: #f0fff4 !important; }
+    .highlight-red:hover  td { background: #ffe6e6 !important; }
+    .highlight-yellow:hover td { background: #fff9e6 !important; }
+    .highlight-green:hover  td { background: #e6ffe6 !important; }
+
+    /* ===== テーブル内コンポーネント ===== */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .s-引合 { background: #dbeafe; color: #1d4ed8; }
+    .s-見積提出高 { background: #fef3c7; color: #b45309; }
+    .s-見積提出低 { background: #ffedd5; color: #c2410c; }
+    .s-受注 { background: #dcfce7; color: #166534; }
+    .s-逸注 { background: #fee2e2; color: #991b1b; }
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .p-高 { background: #fee2e2; color: #991b1b; }
+    .p-中 { background: #fef3c7; color: #b45309; }
+    .p-低 { background: #f0fdf4; color: #166534; }
+    .dept-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #eff6ff;
+      color: #1d4ed8;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .dept-badge:hover { background: #dbeafe; transform: scale(1.03); }
+    .due-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .due-overdue { background: #fee2e2; color: #991b1b; }
+    .due-near    { background: #fef3c7; color: #b45309; }
+    .due-normal  { color: var(--dark); }
+    .notes-cell {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .notes-cell:hover { color: var(--info); }
+    .notes-cell.has-notes { color: var(--dark); }
+    .highlight-btns { display: flex; gap: 4px; align-items: center; }
+    .hl-btn {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(0,0,0,0.15);
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .hl-btn:hover:not(:disabled) { transform: scale(1.2); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .hl-btn:disabled { opacity: 0.35; cursor: default; }
+    .hl-btn.red    { background: #e74c3c; }
+    .hl-btn.yellow { background: #f39c12; }
+    .hl-btn.green  { background: #27ae60; }
+    .hl-clear {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid #bbb;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #888;
+      flex-shrink: 0;
+    }
+    .hl-clear:hover:not(:disabled) { background: #bbb; color: white; transform: scale(1.2); }
+    .hl-clear:disabled { opacity: 0.35; cursor: default; }
+    .row-actions { display: flex; gap: 4px; align-items: center; white-space: nowrap; }
+    .btn-sm {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    .btn-sm:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-edit { background: var(--info); color: white; }
+    .btn-edit:hover:not(:disabled) { background: #2980b9; }
+    .btn-del  { background: var(--danger); color: white; }
+    .btn-del:hover:not(:disabled)  { background: #c0392b; }
+    .select-col { width: 36px; text-align: center; }
+    input[type="checkbox"].row-check { width: 15px; height: 15px; cursor: pointer; accent-color: var(--info); }
+
+    /* ===== ページネーション ===== */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 14px;
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+    .page-btn {
+      min-width: 34px; height: 34px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--info); color: var(--info); }
+    .page-btn.active { background: var(--info); border-color: var(--info); color: white; }
+    .page-btn:disabled { opacity: 0.4; cursor: default; }
+    .page-info { font-size: 13px; color: var(--muted); padding: 0 8px; }
+
+    /* ===== モーダル ===== */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal.active { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: 18px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      animation: slideIn 0.28s ease-out;
+    }
+    .modal-box.wide { max-width: 860px; }
+    @keyframes slideIn {
+      from { transform: translateY(-30px) scale(0.97); opacity: 0; }
+      to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: white;
+      z-index: 1;
+    }
+    .modal-title { font-size: 20px; font-weight: 800; color: var(--dark); }
+    .modal-close {
+      font-size: 26px;
+      cursor: pointer;
+      color: var(--muted);
+      line-height: 1;
+      transition: all 0.2s;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .modal-close:hover { color: var(--danger); background: #fee2e2; transform: rotate(90deg); }
+    .modal-body { padding: 20px 24px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid .span2 { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .form-label .req { color: var(--danger); }
+    .form-control {
+      padding: 10px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .form-control:focus { outline: none; border-color: var(--info); box-shadow: 0 0 0 3px rgba(52,152,219,0.12); }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+    .form-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.25s;
+      margin-top: 6px;
+    }
+    .form-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(102,126,234,0.4); }
+    .form-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .conflict-box {
+      background: #fff3cd;
+      border: 2px solid #f39c12;
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+    .conflict-box .conflict-title { font-weight: 700; color: #856404; margin-bottom: 6px; }
+    .conflict-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+    /* ===== 備考モーダル ===== */
+    .notes-text {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.7;
+      font-size: 14px;
+      color: var(--dark);
+      padding: 4px 0;
+    }
+
+    /* ===== 統計モーダル ===== */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .stats-card {
+      background: var(--light);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+    .stats-card h4 { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
+    .stats-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #e9ecef; font-size: 13px; }
+    .stats-row:last-child { border: none; }
+    .stats-row-label { color: var(--dark); }
+    .stats-row-value { font-weight: 700; color: var(--info); }
+
+    /* ===== CSVモーダル ===== */
+    .csv-area {
+      width: 100%;
+      height: 200px;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-family: monospace;
+      resize: vertical;
+    }
+
+    /* ===== ローディング & エラー ===== */
+    .loading-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--muted); font-size: 15px; font-weight: 600; }
+    .error-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+      gap: 12px;
+    }
+    .error-icon { font-size: 40px; }
+    .error-title { font-size: 18px; font-weight: 800; color: var(--danger); }
+    .error-msg { font-size: 13px; color: var(--muted); text-align: center; max-width: 400px; }
+    .btn-retry { margin-top: 8px; }
+
+    /* ===== トースト通知 ===== */
+    #toastContainer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      max-width: 320px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      animation: toastIn 0.3s ease-out;
+      pointer-events: auto;
+    }
+    @keyframes toastIn { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-success { background: var(--success); }
+    .toast-error   { background: var(--danger); }
+    .toast-warning { background: var(--warning); }
+    .toast-info    { background: var(--info); }
+
+    /* ===== 空状態 ===== */
+    .empty-state {
+      text-align: center;
+      padding: 50px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-text { font-size: 15px; font-weight: 600; }
+
+    /* ===== レスポンシブ ===== */
+    @media (max-width: 768px) {
+      .dashboard { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span2 { grid-column: 1; }
+      .header h1 { font-size: 20px; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="toastContainer"></div>
+
+<div class="container">
+  <!-- ヘッダー -->
+  <div class="header">
+    <h1>
+      ⚓ 船事開 引合い管理システム
+      <span class="version-badge">v2.0</span>
+    </h1>
+    <div class="header-right">
+      <div id="alertOverdue" class="alert-badge alert-overdue" style="display:none" onclick="filterByAlert('overdue')">
+        🚨 <span id="overdueNum">0</span>件 期限超過
+      </div>
+      <div id="alertNearDue" class="alert-badge alert-neardue" style="display:none" onclick="filterByAlert('neardue')">
+        ⏰ <span id="nearDueNum">0</span>件 7日以内
+      </div>
+      <div class="refresh-clock" id="refreshClock">🔄 自動更新: 30秒</div>
+    </div>
+  </div>
+
+  <!-- ダッシュボード -->
+  <div class="dashboard">
+    <div class="card card-total">
+      <h3>📊 総合実績</h3>
+      <div class="card-stat-row">
+        <div class="card-stat">
+          <div class="stat-label">総案件数</div>
+          <div class="stat-value" id="totalCount">—</div>
+        </div>
+        <div class="card-stat">
+          <div class="stat-label">受注件数</div>
+          <div class="stat-value" id="totalReceivedCount">—</div>
+        </div>
+        <div class="card-stat">
+          <div class="stat-label">受注金額</div>
+          <div class="stat-value" id="totalReceivedAmount" style="font-size:16px">—</div>
+          <div class="stat-sub">千円</div>
+        </div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="totalProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🔍 モニタリング</h3>
+      <div class="card-stat-row">
+        <div class="card-stat">
+          <div class="stat-label">案件数</div>
+          <div class="stat-value" id="monCount">—</div>
+        </div>
+        <div class="card-stat">
+          <div class="stat-label">受注件数</div>
+          <div class="stat-value" id="monReceivedCount">—</div>
+        </div>
+      </div>
+      <div class="stat-label" style="margin-top:8px;">受注金額</div>
+      <div class="stat-value" id="monAmount" style="font-size:18px;">—</div>
+      <div class="stat-sub">千円</div>
+      <div class="progress-bar-wrap" style="margin-top:8px;">
+        <div class="progress-bar" id="monProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🚢 操船装置</h3>
+      <div class="card-stat-row">
+        <div class="card-stat">
+          <div class="stat-label">案件数</div>
+          <div class="stat-value" id="ctlCount">—</div>
+        </div>
+        <div class="card-stat">
+          <div class="stat-label">受注件数</div>
+          <div class="stat-value" id="ctlReceivedCount">—</div>
+        </div>
+      </div>
+      <div class="stat-label" style="margin-top:8px;">受注金額</div>
+      <div class="stat-value" id="ctlAmount" style="font-size:18px;">—</div>
+      <div class="stat-sub">千円</div>
+      <div class="progress-bar-wrap" style="margin-top:8px;">
+        <div class="progress-bar" id="ctlProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🤖 自律</h3>
+      <div class="card-stat-row">
+        <div class="card-stat">
+          <div class="stat-label">案件数</div>
+          <div class="stat-value" id="autCount">—</div>
+        </div>
+        <div class="card-stat">
+          <div class="stat-label">受注件数</div>
+          <div class="stat-value" id="autReceivedCount">—</div>
+        </div>
+      </div>
+      <div class="stat-label" style="margin-top:8px;">受注金額</div>
+      <div class="stat-value" id="autAmount" style="font-size:18px;">—</div>
+      <div class="stat-sub">千円</div>
+      <div class="progress-bar-wrap" style="margin-top:8px;">
+        <div class="progress-bar" id="autProgressBar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コントロールパネル -->
+  <div class="control-panel">
+    <div class="control-row-1">
+      <div class="dept-filter-group">
+        <button class="dept-btn active" onclick="setDeptFilter('all',this)">全部署</button>
+        <button class="dept-btn" onclick="setDeptFilter('ship_monitoring',this)">モニタリング</button>
+        <button class="dept-btn" onclick="setDeptFilter('ship_control',this)">操船装置</button>
+        <button class="dept-btn" onclick="setDeptFilter('ship_autonomous',this)">自律</button>
+      </div>
+      <div class="action-btns">
+        <button class="btn btn-success" onclick="openAddModal()">＋ 新規案件</button>
+        <button class="btn btn-warning" onclick="handleClearHighlights()">🗑 ハイライト全消し</button>
+        <button class="btn btn-dark" onclick="openStatsModal()">📊 統計</button>
+        <button class="btn btn-outline" onclick="openCsvModal()">📥 CSV出力</button>
+        <button class="btn btn-primary" onclick="loadData()">🔄 更新</button>
+      </div>
+    </div>
+    <div class="control-row-2">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="検索: 案件No / 顧客名 / 案件名 / 担当者 / 見積額 / 受注予定日 ..." oninput="onSearchInput()">
+      </div>
+      <div class="status-filters" id="statusFilters">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);">ステータス:</span>
+        <label class="status-filter-label checked sf-引合"><input type="checkbox" class="sf" value="引合" checked onchange="onStatusFilter(this)">引合</label>
+        <label class="status-filter-label checked sf-見積高"><input type="checkbox" class="sf" value="見積提出（高）" checked onchange="onStatusFilter(this)">見積提出（高）</label>
+        <label class="status-filter-label checked sf-見積低"><input type="checkbox" class="sf" value="見積提出（低）" checked onchange="onStatusFilter(this)">見積提出（低）</label>
+        <label class="status-filter-label checked sf-受注"><input type="checkbox" class="sf" value="受注" checked onchange="onStatusFilter(this)">受注</label>
+        <label class="status-filter-label sf-逸注"><input type="checkbox" class="sf" value="逸注" onchange="onStatusFilter(this)">逸注</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- テーブル上部メタ情報 -->
+  <div class="table-meta">
+    <div class="table-meta-left" id="tableMeta">読み込み中...</div>
+    <div class="bulk-actions">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);">一括操作:</span>
+      <select id="bulkStatusSelect">
+        <option value="">-- ステータス変更 --</option>
+        <option value="引合">引合</option>
+        <option value="見積提出（高）">見積提出（高）</option>
+        <option value="見積提出（低）">見積提出（低）</option>
+        <option value="受注">受注</option>
+        <option value="逸注">逸注</option>
+      </select>
+      <button class="btn btn-sm btn-outline" onclick="handleBulkStatus()">適用</button>
+      <button class="btn btn-sm btn-outline" onclick="selectAll()">全選択</button>
+      <button class="btn btn-sm btn-outline" onclick="clearSelection()">選択解除</button>
+    </div>
+  </div>
+  <div class="table-container">
+    <div class="table-wrapper">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th class="no-sort select-col"><input type="checkbox" id="selectAllCheck" onchange="toggleSelectAll(this)" style="width:15px;height:15px;cursor:pointer;accent-color:var(--info)"></th>
+            <th onclick="sortBy('deptName')" title="部署">部署<span class="sort-icon"></span></th>
+            <th onclick="sortBy('caseNo')" title="案件No">案件No<span class="sort-icon"></span></th>
+            <th onclick="sortBy('customer')" title="顧客名">顧客名<span class="sort-icon"></span></th>
+            <th onclick="sortBy('projectName')" title="案件名">案件名<span class="sort-icon"></span></th>
+            <th onclick="sortBy('estimate')" title="見積額">見積額(千円)<span class="sort-icon"></span></th>
+            <th onclick="sortBy('status')" title="ステータス">ステータス<span class="sort-icon"></span></th>
+            <th onclick="sortBy('priority')" title="優先度">優先度<span class="sort-icon"></span></th>
+            <th onclick="sortBy('person')" title="担当者">担当者<span class="sort-icon"></span></th>
+            <th class="no-sort">備考</th>
+            <th onclick="sortBy('expectedDate')" title="受注予定日">受注予定日<span class="sort-icon"></span></th>
+            <th onclick="sortBy('updateTime')" title="更新日時">更新日時<span class="sort-icon"></span></th>
+            <th class="no-sort">HL</th>
+            <th class="no-sort">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="14"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">データ読み込み中...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- ===== 新規追加モーダル ===== -->
+<div id="addModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">➕ 新規案件追加</span>
+      <span class="modal-close" onclick="closeAddModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <form id="addForm" onsubmit="return handleAddSubmit(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">部署 <span class="req">*</span></label>
+            <select id="addDept" class="form-control" required onchange="onAddDeptChange(this)">
+              <option value="">選択してください</option>
+              <option value="ship_monitoring">モニタリング</option>
+              <option value="ship_control">操船装置</option>
+              <option value="ship_autonomous">自律</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件No <span style="font-size:11px;color:var(--muted);">（空欄で自動採番）</span></label>
+            <input type="text" id="addCaseNo" class="form-control" placeholder="空欄で自動採番">
+          </div>
+          <div class="form-group">
+            <label class="form-label">顧客名（正式名称） <span class="req">*</span></label>
+            <input type="text" id="addCustomer" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件名 <span class="req">*</span></label>
+            <input type="text" id="addProjectName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">見積額 (千円)</label>
+            <input type="text" id="addEstimate" class="form-control" placeholder="例: 1,500" oninput="fmtEst(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ステータス <span class="req">*</span></label>
+            <select id="addStatus" class="form-control" required>
+              <option value="">選択してください</option>
+              <option value="引合">引合</option>
+              <option value="見積提出（高）">見積提出（高）</option>
+              <option value="見積提出（低）">見積提出（低）</option>
+              <option value="受注">受注</option>
+              <option value="逸注">逸注</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">優先度</label>
+            <select id="addPriority" class="form-control">
+              <option value="高">高</option>
+              <option value="中" selected>中</option>
+              <option value="低">低</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">担当者</label>
+            <input type="text" id="addPerson" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">受注予定日</label>
+            <input type="date" id="addExpectedDate" class="form-control">
+          </div>
+          <div class="form-group span2">
+            <label class="form-label">備考</label>
+            <textarea id="addNotes" class="form-control"></textarea>
+          </div>
+        </div>
+        <button type="submit" class="form-submit" id="addSubmitBtn">追加する</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 編集モーダル ===== -->
+<div id="editModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">✏️ 案件編集</span>
+      <span class="modal-close" onclick="closeEditModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div id="conflictBox" class="conflict-box" style="display:none">
+        <div class="conflict-title">⚠️ 競合が検出されました</div>
+        <div id="conflictMsg"></div>
+        <div class="conflict-actions">
+          <button class="btn btn-sm btn-warning" onclick="forceUpdate()">強制上書き保存</button>
+          <button class="btn btn-sm btn-outline" onclick="reloadAndClose()">最新データを再取得</button>
+        </div>
+      </div>
+      <form id="editForm" onsubmit="return handleEditSubmit(event)">
+        <input type="hidden" id="editRowNumber">
+        <input type="hidden" id="editUpdateTime">
+        <input type="hidden" id="editHighlight">
+        <input type="hidden" id="editSheetName">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">部署 <span class="req">*</span></label>
+            <select id="editDept" class="form-control" required>
+              <option value="">選択してください</option>
+              <option value="ship_monitoring">モニタリング</option>
+              <option value="ship_control">操船装置</option>
+              <option value="ship_autonomous">自律</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件No</label>
+            <input type="text" id="editCaseNo" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">顧客名 <span class="req">*</span></label>
+            <input type="text" id="editCustomer" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">案件名 <span class="req">*</span></label>
+            <input type="text" id="editProjectName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">見積額 (千円)</label>
+            <input type="text" id="editEstimate" class="form-control" oninput="fmtEst(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ステータス <span class="req">*</span></label>
+            <select id="editStatus" class="form-control" required>
+              <option value="">選択してください</option>
+              <option value="引合">引合</option>
+              <option value="見積提出（高）">見積提出（高）</option>
+              <option value="見積提出（低）">見積提出（低）</option>
+              <option value="受注">受注</option>
+              <option value="逸注">逸注</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">優先度</label>
+            <select id="editPriority" class="form-control">
+              <option value="高">高</option>
+              <option value="中">中</option>
+              <option value="低">低</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">担当者</label>
+            <input type="text" id="editPerson" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">受注予定日</label>
+            <input type="date" id="editExpectedDate" class="form-control">
+          </div>
+          <div class="form-group span2">
+            <label class="form-label">備考</label>
+            <textarea id="editNotes" class="form-control"></textarea>
+          </div>
+        </div>
+        <button type="submit" class="form-submit" id="editSubmitBtn">更新する</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 備考詳細モーダル ===== -->
+<div id="notesModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">📝 備考詳細</span>
+      <span class="modal-close" onclick="document.getElementById('notesModal').classList.remove('active')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="notes-text" id="notesText"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 部署変更モーダル ===== -->
+<div id="deptModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">🔄 部署変更</span>
+      <span class="modal-close" onclick="document.getElementById('deptModal').classList.remove('active')">✕</span>
+    </div>
+    <div class="modal-body">
+      <form id="deptForm" onsubmit="return handleDeptSubmit(event)">
+        <input type="hidden" id="deptOldDept">
+        <input type="hidden" id="deptRowNumber">
+        <input type="hidden" id="deptSheetName">
+        <input type="hidden" id="deptCaseNo">
+        <input type="hidden" id="deptCustomer">
+        <input type="hidden" id="deptProjectName">
+        <input type="hidden" id="deptEstimate">
+        <input type="hidden" id="deptStatus">
+        <input type="hidden" id="deptPerson">
+        <input type="hidden" id="deptExpectedDate">
+        <input type="hidden" id="deptNotes">
+        <input type="hidden" id="deptHighlight">
+        <input type="hidden" id="deptUpdateTime">
+        <input type="hidden" id="deptPriority">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">現在の部署</label>
+          <input type="text" id="deptCurrentName" class="form-control" readonly style="background:#f8f9fa;">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">変更先の部署 <span class="req">*</span></label>
+          <select id="deptNewDept" class="form-control" required>
+            <option value="">選択してください</option>
+            <option value="ship_monitoring">モニタリング</option>
+            <option value="ship_control">操船装置</option>
+            <option value="ship_autonomous">自律</option>
+          </select>
+        </div>
+        <div style="background:#fff3cd;border:1.5px solid #f39c12;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;margin-bottom:14px;">
+          ⚠️ 部署を変更すると対応するスプレッドシートのシートに案件が移動します。
+        </div>
+        <button type="submit" class="form-submit">部署を変更する</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 統計モーダル ===== -->
+<div id="statsModal" class="modal">
+  <div class="modal-box wide">
+    <div class="modal-header">
+      <span class="modal-title">📊 統計情報</span>
+      <span class="modal-close" onclick="document.getElementById('statsModal').classList.remove('active')">✕</span>
+    </div>
+    <div class="modal-body" id="statsContent">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CSVモーダル ===== -->
+<div id="csvModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">📥 CSV出力</span>
+      <span class="modal-close" onclick="document.getElementById('csvModal').classList.remove('active')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">出力対象</label>
+        <select id="csvDept" class="form-control">
+          <option value="all">全部署</option>
+          <option value="ship_monitoring">モニタリング</option>
+          <option value="ship_control">操船装置</option>
+          <option value="ship_autonomous">自律</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:14px;" onclick="generateCsv()">CSVを生成</button>
+      <textarea id="csvArea" class="csv-area" readonly placeholder="ここにCSVデータが表示されます..."></textarea>
+      <button class="btn btn-success" style="width:100%;margin-top:10px;" onclick="downloadCsv()">⬇️ ダウンロード</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 船事開 引合い管理システム v2.0 - フロントエンドスクリプト
+// ============================================================
+
+// ===== 状態管理 =====
+var APP = {
+  allCases: [],
+  filteredCases: [],
+  displayCases: [],
+  receivedAmounts: {},
+  receivedCounts: {},
+  currentDept: 'all',
+  sortKey: 'priority',
+  sortDir: 1,
+  page: 1,
+  pageSize: 50,
+  searchTimer: null,
+  autoTimer: null,
+  countdown: 30,
+  selectedRows: new Set(),
+  editCaseIndex: null,
+  csvData: ''
+};
+
+// ===== 初期化 =====
+window.addEventListener('load', function() {
+  loadData();
+  startAutoRefresh();
+  updateStatusFilterStyles();
+});
+
+// ===== データ読み込み =====
+function loadData() {
+  setTableLoading();
+  resetCountdown();
+  google.script.run
+    .withSuccessHandler(onSnapshotSuccess)
+    .withFailureHandler(onSnapshotError)
+    .getSnapshot();
+}
+
+function onSnapshotSuccess(res) {
+  if (!res || !res.ok) {
+    setTableError('データ取得失敗: ' + (res && res.error ? res.error : 'GASサーバーからエラーが返されました'));
+    return;
+  }
+  APP.allCases       = Array.isArray(res.cases) ? res.cases : [];
+  APP.receivedAmounts = res.amounts || {};
+  APP.receivedCounts  = res.counts  || {};
+
+  // 部署別案件数
+  APP.deptTotals = { ship_monitoring: 0, ship_control: 0, ship_autonomous: 0 };
+  APP.allCases.forEach(function(c) {
+    if (APP.deptTotals.hasOwnProperty(c.dept)) APP.deptTotals[c.dept]++;
+  });
+
+  updateDashboard(res);
+  updateAlertBadges(res.overdueCount || 0, res.nearDueCount || 0);
+  applyFilters();
+  toast('データを更新しました（' + APP.allCases.length + '件）', 'success', 2500);
+}
+
+function onSnapshotError(err) {
+  setTableError('通信エラー: ' + (err.message || String(err)));
+  toast('通信エラーが発生しました', 'error');
+}
+
+// ===== ダッシュボード更新 =====
+function updateDashboard(res) {
+  var am = APP.receivedAmounts;
+  var rc = APP.receivedCounts;
+  var dt = APP.deptTotals || {};
+
+  var totalRC = (rc.ship_monitoring||0) + (rc.ship_control||0) + (rc.ship_autonomous||0);
+  var totalRA = (am.ship_monitoring||0) + (am.ship_control||0) + (am.ship_autonomous||0);
+  var totalAll = APP.allCases.length;
+  var recvRate = totalAll > 0 ? Math.round((totalRC / totalAll) * 100) : 0;
+
+  setText('totalCount', totalAll + '件');
+  setText('totalReceivedCount', totalRC + '件');
+  setText('totalReceivedAmount', totalRA.toLocaleString());
+  setStyle('totalProgressBar', 'width', recvRate + '%');
+
+  var depts = [
+    { key: 'ship_monitoring', id: 'mon' },
+    { key: 'ship_control',    id: 'ctl' },
+    { key: 'ship_autonomous', id: 'aut' }
+  ];
+  depts.forEach(function(d) {
+    var total = dt[d.key] || 0;
+    var recv  = rc[d.key] || 0;
+    var amnt  = am[d.key] || 0;
+    var rate  = total > 0 ? Math.round((recv / total) * 100) : 0;
+    setText(d.id + 'Count', total + '件');
+    setText(d.id + 'ReceivedCount', recv + '件');
+    setText(d.id + 'Amount', amnt.toLocaleString());
+    setStyle(d.id + 'ProgressBar', 'width', rate + '%');
+  });
+}
+
+function updateAlertBadges(overdue, nearDue) {
+  var od = document.getElementById('alertOverdue');
+  var nd = document.getElementById('alertNearDue');
+  if (overdue > 0) {
+    od.style.display = 'flex';
+    setText('overdueNum', overdue);
+  } else { od.style.display = 'none'; }
+  if (nearDue > 0) {
+    nd.style.display = 'flex';
+    setText('nearDueNum', nearDue);
+  } else { nd.style.display = 'none'; }
+}
+
+// ===== フィルタリング =====
+function applyFilters() {
+  var dept = APP.currentDept;
+  var checkedStatuses = Array.prototype.slice.call(document.querySelectorAll('.sf:checked'))
+    .map(function(cb) { return cb.value; });
+  var q = (document.getElementById('searchInput').value || '').trim();
+
+  var cases = APP.allCases.slice();
+
+  if (dept !== 'all') {
+    cases = cases.filter(function(c) { return c.dept === dept; });
+  }
+
+  if (checkedStatuses.length > 0) {
+    cases = cases.filter(function(c) { return checkedStatuses.indexOf(c.status) !== -1; });
+  }
+
+  if (q) {
+    var tokens = q.split(/\s+/).filter(Boolean).map(function(t) { return t.toLowerCase(); });
+    cases = cases.filter(function(c) {
+      var ed = c.expectedDate || '';
+      var haystack = [
+        c.deptName||'', c.caseNo||'', c.customer||'', c.projectName||'',
+        c.estimateDisplay||'', String(c.estimate||''), c.status||'',
+        c.person||'', ed, ed.replace(/\//g,'-'), c.priority||''
+      ].join(' ').toLowerCase();
+      return tokens.every(function(t) { return haystack.indexOf(t) !== -1; });
+    });
+  }
+
+  sortCases(cases);
+  APP.filteredCases = cases;
+  APP.page = 1;
+  APP.selectedRows.clear();
+  document.getElementById('selectAllCheck').checked = false;
+  renderPage();
+}
+
+function sortCases(cases) {
+  var k = APP.sortKey;
+  var d = APP.sortDir;
+
+  var pRank = {'高':1,'中':2,'低':3};
+  var sRank = {'引合':1,'見積提出（高）':2,'見積提出（低）':3,'受注':4,'逸注':5};
+  var hRank = {'赤':1,'黄':2,'緑':3};
+
+  cases.sort(function(a, b) {
+    var av, bv;
+    if (k === 'priority') {
+      av = pRank[a.priority] || 99;
+      bv = pRank[b.priority] || 99;
+    } else if (k === 'status') {
+      av = sRank[a.status] || 99;
+      bv = sRank[b.status] || 99;
+    } else if (k === 'highlight') {
+      av = hRank[a.highlight] || 99;
+      bv = hRank[b.highlight] || 99;
+    } else if (k === 'estimate') {
+      av = parseFloat(a.estimate) || 0;
+      bv = parseFloat(b.estimate) || 0;
+    } else if (k === 'expectedDate' || k === 'updateTime') {
+      av = a[k] ? new Date(a[k]).getTime() : 0;
+      bv = b[k] ? new Date(b[k]).getTime() : 0;
+    } else {
+      av = (a[k] || '').toString().toLowerCase();
+      bv = (b[k] || '').toString().toLowerCase();
+    }
+    if (av < bv) return -d;
+    if (av > bv) return d;
+    return 0;
+  });
+}
+
+function sortBy(key) {
+  if (APP.sortKey === key) {
+    APP.sortDir = -APP.sortDir;
+  } else {
+    APP.sortKey = key;
+    APP.sortDir = 1;
+  }
+  // ヘッダーのソートアイコン更新
+  document.querySelectorAll('th').forEach(function(th) {
+    th.classList.remove('sort-asc', 'sort-desc');
+  });
+  var ths = document.querySelectorAll('th');
+  ths.forEach(function(th) {
+    if (th.getAttribute('onclick') === 'sortBy(\'' + key + '\')') {
+      th.classList.add(APP.sortDir === 1 ? 'sort-asc' : 'sort-desc');
+    }
+  });
+  applyFilters();
+}
+
+// ===== ページネーション付きレンダリング =====
+function renderPage() {
+  var all = APP.filteredCases;
+  var total = all.length;
+  var ps = APP.pageSize;
+  var page = APP.page;
+  var totalPages = Math.max(1, Math.ceil(total / ps));
+  if (page > totalPages) page = APP.page = 1;
+
+  var start = (page - 1) * ps;
+  var end   = Math.min(start + ps, total);
+  APP.displayCases = all.slice(start, end);
+
+  updateTableMeta(total, start + 1, end);
+  renderTable(APP.displayCases);
+  renderPagination(page, totalPages, total);
+}
+
+function updateTableMeta(total, from, to) {
+  var dept = APP.currentDept === 'all' ? '全部署' : getDeptName(APP.currentDept);
+  document.getElementById('tableMeta').textContent =
+    dept + ' | ' + total + '件中 ' + from + '〜' + to + '件表示 | ' +
+    (APP.selectedRows.size > 0 ? APP.selectedRows.size + '件選択中' : '');
+}
+
+function renderTable(cases) {
+  var tbody = document.getElementById('tableBody');
+  if (!cases || cases.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="14"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">条件に合う案件がありません</div></div></td></tr>';
+    return;
+  }
+
+  var html = '';
+  cases.forEach(function(c, i) {
+    // filteredCases内のインデックス（編集用）
+    var globalIdx = (APP.page - 1) * APP.pageSize + i;
+
+    var hlClass = c.highlight === '赤' ? 'highlight-red' : c.highlight === '黄' ? 'highlight-yellow' : c.highlight === '緑' ? 'highlight-green' : '';
+    var checked = APP.selectedRows.has(globalIdx) ? 'checked' : '';
+
+    // ステータスバッジ
+    var sClass = {
+      '引合': 's-引合',
+      '見積提出（高）': 's-見積提出高',
+      '見積提出（低）': 's-見積提出低',
+      '受注': 's-受注',
+      '逸注': 's-逸注'
+    }[c.status] || '';
+    var statusBadge = '<span class="status-badge ' + sClass + '">' + esc(c.status||'') + '</span>';
+
+    // 優先度バッジ
+    var pClass = 'p-' + (c.priority || '中');
+    var priorityBadge = '<span class="priority-badge ' + pClass + '">' + esc(c.priority||'中') + '</span>';
+
+    // 受注予定日
+    var dueDisplay = esc(c.expectedDate || '');
+    if (c.expectedDate) {
+      if (c.isOverdue) {
+        dueDisplay = '<span class="due-badge due-overdue">⚠️' + esc(c.expectedDate) + '(超過)</span>';
+      } else if (c.daysUntilDue !== null && c.daysUntilDue <= 7) {
+        dueDisplay = '<span class="due-badge due-near">⏰' + esc(c.expectedDate) + '(' + c.daysUntilDue + '日)</span>';
+      }
+    }
+
+    // 備考
+    var notesShort = '';
+    var hasNotes = c.notes && c.notes.toString().trim() !== '';
+    if (hasNotes) {
+      var n = c.notes.toString();
+      notesShort = n.length > 25 ? n.substring(0, 25) + '…' : n;
+    }
+    var notesClass = 'notes-cell' + (hasNotes ? ' has-notes' : '');
+
+    html += '<tr class="' + hlClass + '">';
+    html += '<td class="select-col"><input type="checkbox" class="row-check" data-idx="' + globalIdx + '" ' + checked + ' onchange="onRowCheck(this)"></td>';
+    html += '<td><span class="dept-badge" onclick="openDeptModal(' + globalIdx + ')" title="クリックで部署変更">🔄 ' + esc(c.deptName||'') + '</span></td>';
+    html += '<td style="font-family:monospace;font-size:11px;">' + esc(c.caseNo||'') + '</td>';
+    html += '<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(c.customer||'') + '">' + esc(c.customer||'') + '</td>';
+    html += '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(c.projectName||'') + '">' + esc(c.projectName||'') + '</td>';
+    html += '<td style="text-align:right;font-weight:700;">' + (c.estimateDisplay ? esc(c.estimateDisplay) : '') + '</td>';
+    html += '<td>' + statusBadge + '</td>';
+    html += '<td>' + priorityBadge + '</td>';
+    html += '<td>' + esc(c.person||'') + '</td>';
+    html += '<td class="' + notesClass + '" onclick="openNotesModal(' + globalIdx + ')" title="' + esc(c.notes||'備考なし') + '">' + esc(notesShort) + '</td>';
+    html += '<td>' + dueDisplay + '</td>';
+    html += '<td style="font-size:11px;color:var(--muted);">' + esc(c.updateTime||'') + '</td>';
+
+    // ハイライトボタン
+    var sn = esc(c.sheetName||'');
+    var dept = esc(c.dept||'');
+    html += '<td><div class="highlight-btns">';
+    html += '<button class="hl-btn red"   onclick="doHighlight(\'' + dept + '\',' + c.rowNumber + ',\'赤\',\'' + sn + '\')" title="赤ハイライト"></button>';
+    html += '<button class="hl-btn yellow" onclick="doHighlight(\'' + dept + '\',' + c.rowNumber + ',\'黄\',\'' + sn + '\')" title="黄ハイライト"></button>';
+    html += '<button class="hl-btn green"  onclick="doHighlight(\'' + dept + '\',' + c.rowNumber + ',\'緑\',\'' + sn + '\')" title="緑ハイライト"></button>';
+    html += '<button class="hl-clear" onclick="doHighlight(\'' + dept + '\',' + c.rowNumber + ',\'\',\'' + sn + '\')" title="解除">✕</button>';
+    html += '</div></td>';
+
+    // 操作ボタン
+    html += '<td><div class="row-actions">';
+    html += '<button class="btn-sm btn-edit" onclick="openEditModal(' + globalIdx + ')">編集</button>';
+    html += '<button class="btn-sm btn-del"  onclick="handleDelete(' + globalIdx + ')">削除</button>';
+    html += '</div></td>';
+    html += '</tr>';
+  });
+
+  tbody.innerHTML = html;
+}
+
+function renderPagination(page, totalPages, total) {
+  var el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+  var html = '';
+  html += '<button class="page-btn" onclick="goPage(' + (page-1) + ')" ' + (page<=1?'disabled':'') + '>‹</button>';
+
+  var start = Math.max(1, page - 2);
+  var end   = Math.min(totalPages, page + 2);
+  if (start > 1) { html += '<button class="page-btn" onclick="goPage(1)">1</button>'; if (start > 2) html += '<span class="page-info">…</span>'; }
+  for (var p = start; p <= end; p++) {
+    html += '<button class="page-btn' + (p===page?' active':'') + '" onclick="goPage(' + p + ')">' + p + '</button>';
+  }
+  if (end < totalPages) { if (end < totalPages-1) html += '<span class="page-info">…</span>'; html += '<button class="page-btn" onclick="goPage(' + totalPages + ')">' + totalPages + '</button>'; }
+  html += '<button class="page-btn" onclick="goPage(' + (page+1) + ')" ' + (page>=totalPages?'disabled':'') + '>›</button>';
+  html += '<span class="page-info">全' + total + '件</span>';
+  html += '<select onchange="changePageSize(this.value)" style="padding:4px 8px;border:2px solid #ddd;border-radius:6px;font-size:12px;">';
+  [25, 50, 100, 200].forEach(function(n) {
+    html += '<option value="' + n + '"' + (APP.pageSize===n?' selected':'') + '>' + n + '件/ページ</option>';
+  });
+  html += '</select>';
+  el.innerHTML = html;
+}
+
+function goPage(p) {
+  APP.page = p;
+  APP.selectedRows.clear();
+  document.getElementById('selectAllCheck').checked = false;
+  renderPage();
+}
+function changePageSize(n) {
+  APP.pageSize = parseInt(n, 10);
+  APP.page = 1;
+  renderPage();
+}
+
+// ===== 部署フィルター =====
+function setDeptFilter(dept, btn) {
+  APP.currentDept = dept;
+  document.querySelectorAll('.dept-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  applyFilters();
+}
+
+// ===== 検索（デバウンス）=====
+function onSearchInput() {
+  clearTimeout(APP.searchTimer);
+  APP.searchTimer = setTimeout(applyFilters, 250);
+}
+
+// ===== ステータスフィルター =====
+function onStatusFilter(cb) {
+  updateStatusFilterStyles();
+  applyFilters();
+}
+function updateStatusFilterStyles() {
+  document.querySelectorAll('.status-filter-label').forEach(function(lbl) {
+    var cb = lbl.querySelector('input');
+    if (cb.checked) lbl.classList.add('checked');
+    else lbl.classList.remove('checked');
+  });
+}
+
+// ===== アラートフィルター =====
+function filterByAlert(type) {
+  document.querySelectorAll('.sf').forEach(function(cb) {
+    cb.checked = (cb.value !== '逸注');
+  });
+  updateStatusFilterStyles();
+  APP.currentDept = 'all';
+  document.querySelectorAll('.dept-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.dept-btn').classList.add('active');
+
+  if (type === 'overdue') {
+    APP.filteredCases = APP.allCases.filter(function(c) { return c.isOverdue; });
+  } else {
+    APP.filteredCases = APP.allCases.filter(function(c) {
+      return c.daysUntilDue !== null && c.daysUntilDue >= 0 && c.daysUntilDue <= 7;
+    });
+  }
+  APP.page = 1;
+  renderPage();
+}
+
+// ===== チェックボックス選択 =====
+function onRowCheck(el) {
+  var idx = parseInt(el.getAttribute('data-idx'), 10);
+  if (el.checked) APP.selectedRows.add(idx);
+  else APP.selectedRows.delete(idx);
+  updateTableMeta(APP.filteredCases.length,
+    (APP.page-1)*APP.pageSize+1,
+    Math.min(APP.page*APP.pageSize, APP.filteredCases.length));
+}
+function toggleSelectAll(masterCb) {
+  var start = (APP.page-1)*APP.pageSize;
+  var end = Math.min(start + APP.pageSize, APP.filteredCases.length);
+  for (var i = start; i < end; i++) {
+    if (masterCb.checked) APP.selectedRows.add(i);
+    else APP.selectedRows.delete(i);
+  }
+  document.querySelectorAll('.row-check').forEach(function(cb, idx) {
+    cb.checked = masterCb.checked;
+  });
+  updateTableMeta(APP.filteredCases.length, start+1, Math.min(end, APP.filteredCases.length));
+}
+function selectAll() {
+  for (var i = 0; i < APP.filteredCases.length; i++) APP.selectedRows.add(i);
+  document.querySelectorAll('.row-check').forEach(function(cb) { cb.checked = true; });
+  document.getElementById('selectAllCheck').checked = true;
+  updateTableMeta(APP.filteredCases.length, 1, Math.min(APP.pageSize, APP.filteredCases.length));
+}
+function clearSelection() {
+  APP.selectedRows.clear();
+  document.querySelectorAll('.row-check').forEach(function(cb) { cb.checked = false; });
+  document.getElementById('selectAllCheck').checked = false;
+  updateTableMeta(APP.filteredCases.length, 1, Math.min(APP.pageSize, APP.filteredCases.length));
+}
+
+// ===== 一括ステータス変更 =====
+function handleBulkStatus() {
+  var newStatus = document.getElementById('bulkStatusSelect').value;
+  if (!newStatus) { toast('ステータスを選択してください', 'warning'); return; }
+  if (APP.selectedRows.size === 0) { toast('案件を選択してください', 'warning'); return; }
+  if (!confirm(APP.selectedRows.size + '件のステータスを「' + newStatus + '」に変更しますか？')) return;
+
+  var caseList = [];
+  APP.selectedRows.forEach(function(idx) {
+    var c = APP.filteredCases[idx];
+    if (c) caseList.push({ dept: c.dept, rowNumber: c.rowNumber, sheetName: c.sheetName });
+  });
+
+  toast('処理中...', 'info');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) { toast(res.message, 'success'); loadData(); }
+      else toast('エラー: ' + (res.error||''), 'error');
+    })
+    .withFailureHandler(function(err) { toast('通信エラー: ' + (err.message||err), 'error'); })
+    .bulkUpdateStatus(caseList, newStatus);
+}
+
+// ===== ハイライト =====
+function doHighlight(dept, rowNumber, color, sheetName) {
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) loadData();
+      else toast('エラー: ' + (res.error||''), 'error');
+    })
+    .withFailureHandler(function(err) { toast('エラー: ' + (err.message||err), 'error'); })
+    .setHighlight(dept, rowNumber, color, sheetName);
+}
+
+function handleClearHighlights() {
+  if (APP.currentDept === 'all') { toast('部署を選択してからハイライト全消しを実行してください', 'warning'); return; }
+  if (!confirm(getDeptName(APP.currentDept) + 'のハイライトを全て消去しますか？')) return;
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) { toast(res.message, 'success'); loadData(); }
+      else toast('エラー: ' + (res.error||''), 'error');
+    })
+    .withFailureHandler(function(err) { toast('エラー: ' + (err.message||err), 'error'); })
+    .clearAllHighlights(APP.currentDept);
+}
+
+// ===== 新規追加モーダル =====
+function openAddModal() {
+  document.getElementById('addModal').classList.add('active');
+  document.getElementById('addForm').reset();
+  document.getElementById('addPriority').value = '中';
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('active'); }
+
+function onAddDeptChange(sel) {
+  if (sel.value) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.caseNo) document.getElementById('addCaseNo').placeholder = res.caseNo + '（自動採番例）';
+      })
+      .getNextCaseNo(sel.value);
+  }
+}
+
+function handleAddSubmit(event) {
+  event.preventDefault();
+  var btn = document.getElementById('addSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '追加中...';
+
+  var caseData = {
+    dept:         document.getElementById('addDept').value,
+    caseNo:       document.getElementById('addCaseNo').value,
+    customer:     document.getElementById('addCustomer').value,
+    projectName:  document.getElementById('addProjectName').value,
+    estimate:     document.getElementById('addEstimate').value,
+    status:       document.getElementById('addStatus').value,
+    priority:     document.getElementById('addPriority').value,
+    person:       document.getElementById('addPerson').value,
+    expectedDate: document.getElementById('addExpectedDate').value,
+    notes:        document.getElementById('addNotes').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false; btn.textContent = '追加する';
+      if (res.success) {
+        toast(res.message || '案件を追加しました', 'success');
+        closeAddModal();
+        loadData();
+      } else {
+        toast('エラー: ' + (res.error||''), 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; btn.textContent = '追加する';
+      toast('通信エラー: ' + (err.message||err), 'error');
+    })
+    .addCase(caseData);
+  return false;
+}
+
+// ===== 編集モーダル =====
+function openEditModal(idx) {
+  APP.editCaseIndex = idx;
+  var c = APP.filteredCases[idx];
+  if (!c) return;
+
+  document.getElementById('conflictBox').style.display = 'none';
+  document.getElementById('editRowNumber').value  = c.rowNumber;
+  document.getElementById('editUpdateTime').value = c.updateTime || '';
+  document.getElementById('editHighlight').value  = c.highlight || '';
+  document.getElementById('editSheetName').value  = c.sheetName || '';
+  document.getElementById('editDept').value        = c.dept || '';
+  document.getElementById('editCaseNo').value      = c.caseNo || '';
+  document.getElementById('editCustomer').value    = c.customer || '';
+  document.getElementById('editProjectName').value = c.projectName || '';
+  document.getElementById('editEstimate').value    = c.estimateDisplay || '';
+  document.getElementById('editStatus').value      = c.status || '';
+  document.getElementById('editPriority').value    = c.priority || '中';
+  document.getElementById('editPerson').value      = c.person || '';
+  document.getElementById('editExpectedDate').value = c.expectedDate ? c.expectedDate.replace(/\//g, '-') : '';
+  document.getElementById('editNotes').value       = c.notes || '';
+  document.getElementById('editModal').classList.add('active');
+}
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('active');
+  APP.editCaseIndex = null;
+}
+
+function handleEditSubmit(event) {
+  event.preventDefault();
+  submitEditForm(false);
+  return false;
+}
+function forceUpdate() { submitEditForm(true); }
+
+function submitEditForm(forceFlag) {
+  var btn = document.getElementById('editSubmitBtn');
+  btn.disabled = true; btn.textContent = '更新中...';
+
+  var caseData = {
+    dept:         document.getElementById('editDept').value,
+    rowNumber:    parseInt(document.getElementById('editRowNumber').value, 10),
+    updateTime:   document.getElementById('editUpdateTime').value,
+    highlight:    document.getElementById('editHighlight').value,
+    sheetName:    document.getElementById('editSheetName').value,
+    caseNo:       document.getElementById('editCaseNo').value,
+    customer:     document.getElementById('editCustomer').value,
+    projectName:  document.getElementById('editProjectName').value,
+    estimate:     document.getElementById('editEstimate').value,
+    status:       document.getElementById('editStatus').value,
+    priority:     document.getElementById('editPriority').value,
+    person:       document.getElementById('editPerson').value,
+    expectedDate: document.getElementById('editExpectedDate').value,
+    notes:        document.getElementById('editNotes').value,
+    forceUpdate:  forceFlag || false
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false; btn.textContent = '更新する';
+      if (res.success) {
+        toast(res.message || '案件を更新しました', 'success');
+        closeEditModal();
+        loadData();
+      } else if (res.conflict) {
+        document.getElementById('conflictBox').style.display = 'block';
+        document.getElementById('conflictMsg').textContent = res.message;
+      } else {
+        toast('エラー: ' + (res.error || res.message || ''), 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false; btn.textContent = '更新する';
+      toast('通信エラー: ' + (err.message||err), 'error');
+    })
+    .updateCaseWithConflictCheck(caseData);
+}
+
+function reloadAndClose() { closeEditModal(); loadData(); }
+
+// ===== 削除 =====
+function handleDelete(idx) {
+  var c = APP.filteredCases[idx];
+  if (!c) return;
+  var msg = '以下の案件を削除しますか？\n\n案件No: ' + (c.caseNo||'(なし)') + '\n顧客名: ' + (c.customer||'') + '\n案件名: ' + (c.projectName||'') + '\n\n⚠️ この操作は元に戻せません。';
+  if (!confirm(msg)) return;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) { toast(res.message || '削除しました', 'success'); loadData(); }
+      else toast('エラー: ' + (res.error||''), 'error');
+    })
+    .withFailureHandler(function(err) { toast('削除エラー: ' + (err.message||err), 'error'); })
+    .deleteCase(c.dept, c.rowNumber, c.sheetName);
+}
+
+// ===== 備考モーダル =====
+function openNotesModal(idx) {
+  var c = APP.filteredCases[idx];
+  document.getElementById('notesText').textContent = (c && c.notes) ? c.notes : '備考なし';
+  document.getElementById('notesModal').classList.add('active');
+}
+
+// ===== 部署変更モーダル =====
+function openDeptModal(idx) {
+  var c = APP.filteredCases[idx];
+  if (!c) return;
+  document.getElementById('deptOldDept').value      = c.dept;
+  document.getElementById('deptRowNumber').value    = c.rowNumber;
+  document.getElementById('deptSheetName').value    = c.sheetName || '';
+  document.getElementById('deptCaseNo').value       = c.caseNo || '';
+  document.getElementById('deptCustomer').value     = c.customer || '';
+  document.getElementById('deptProjectName').value  = c.projectName || '';
+  document.getElementById('deptEstimate').value     = c.estimate || '';
+  document.getElementById('deptStatus').value       = c.status || '';
+  document.getElementById('deptPerson').value       = c.person || '';
+  document.getElementById('deptExpectedDate').value = c.expectedDate || '';
+  document.getElementById('deptNotes').value        = c.notes || '';
+  document.getElementById('deptHighlight').value    = c.highlight || '';
+  document.getElementById('deptUpdateTime').value   = c.updateTime || '';
+  document.getElementById('deptPriority').value     = c.priority || '中';
+  document.getElementById('deptCurrentName').value  = c.deptName || '';
+  document.getElementById('deptNewDept').value      = '';
+  document.getElementById('deptModal').classList.add('active');
+}
+
+function handleDeptSubmit(event) {
+  event.preventDefault();
+  var oldDept = document.getElementById('deptOldDept').value;
+  var newDept = document.getElementById('deptNewDept').value;
+  if (oldDept === newDept) { toast('同じ部署が選択されています', 'warning'); return false; }
+  if (!confirm('部署を変更しますか？')) return false;
+
+  var caseData = {
+    oldDept: oldDept, newDept: newDept,
+    rowNumber:    parseInt(document.getElementById('deptRowNumber').value, 10),
+    sheetName:    document.getElementById('deptSheetName').value,
+    caseNo:       document.getElementById('deptCaseNo').value,
+    customer:     document.getElementById('deptCustomer').value,
+    projectName:  document.getElementById('deptProjectName').value,
+    estimate:     document.getElementById('deptEstimate').value,
+    status:       document.getElementById('deptStatus').value,
+    priority:     document.getElementById('deptPriority').value,
+    person:       document.getElementById('deptPerson').value,
+    expectedDate: document.getElementById('deptExpectedDate').value,
+    notes:        document.getElementById('deptNotes').value,
+    highlight:    document.getElementById('deptHighlight').value,
+    updateTime:   document.getElementById('deptUpdateTime').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) { toast(res.message || '変更しました', 'success'); document.getElementById('deptModal').classList.remove('active'); loadData(); }
+      else toast('エラー: ' + (res.error||''), 'error');
+    })
+    .withFailureHandler(function(err) { toast('通信エラー: ' + (err.message||err), 'error'); })
+    .changeDepartment(caseData);
+  return false;
+}
+
+// ===== 統計モーダル =====
+function openStatsModal() {
+  document.getElementById('statsModal').classList.add('active');
+  document.getElementById('statsContent').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+
+  // ローカルデータから統計を計算
+  var cases = APP.allCases;
+  var am = APP.receivedAmounts;
+  var dt = APP.deptTotals || {};
+
+  var byStatus = {};
+  var byPriority = {};
+  var totalEst = 0;
+  var recvEst  = 0;
+
+  cases.forEach(function(c) {
+    byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    byPriority[c.priority || '中'] = (byPriority[c.priority || '中'] || 0) + 1;
+    if (c.estimate) {
+      var v = parseFloat(c.estimate);
+      if (!isNaN(v)) {
+        totalEst += v;
+        if (c.status === '受注') recvEst += v;
+      }
+    }
+  });
+
+  var recvRate = totalEst > 0 ? Math.round((recvEst / totalEst) * 100) : 0;
+
+  var html = '<div class="stats-grid">';
+
+  html += '<div class="stats-card"><h4>📁 部署別件数</h4>';
+  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d) {
+    html += '<div class="stats-row"><span class="stats-row-label">' + d[1] + '</span><span class="stats-row-value">' + (dt[d[0]]||0) + '件</span></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="stats-card"><h4>📊 ステータス別件数</h4>';
+  ['引合','見積提出（高）','見積提出（低）','受注','逸注'].forEach(function(s) {
+    html += '<div class="stats-row"><span class="stats-row-label">' + s + '</span><span class="stats-row-value">' + (byStatus[s]||0) + '件</span></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="stats-card"><h4>🔥 優先度別件数</h4>';
+  ['高','中','低'].forEach(function(p) {
+    html += '<div class="stats-row"><span class="stats-row-label">' + p + '</span><span class="stats-row-value">' + (byPriority[p]||0) + '件</span></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="stats-card"><h4>💰 金額サマリー</h4>';
+  html += '<div class="stats-row"><span class="stats-row-label">総見積金額</span><span class="stats-row-value">' + totalEst.toLocaleString() + '千円</span></div>';
+  html += '<div class="stats-row"><span class="stats-row-label">受注金額計</span><span class="stats-row-value">' + recvEst.toLocaleString() + '千円</span></div>';
+  html += '<div class="stats-row"><span class="stats-row-label">受注金額率</span><span class="stats-row-value">' + recvRate + '%</span></div>';
+  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d) {
+    html += '<div class="stats-row"><span class="stats-row-label">　' + d[1] + '</span><span class="stats-row-value">' + (am[d[0]]||0).toLocaleString() + '千円</span></div>';
+  });
+  html += '</div>';
+
+  html += '</div>';
+
+  document.getElementById('statsContent').innerHTML = html;
+}
+
+// ===== CSVモーダル =====
+function openCsvModal() { document.getElementById('csvModal').classList.add('active'); }
+
+function generateCsv() {
+  var dept = document.getElementById('csvDept').value;
+  toast('CSV生成中...', 'info');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        document.getElementById('csvArea').value = res.csv;
+        APP.csvData = res.csv;
+        toast(res.count + '件のCSVを生成しました', 'success');
+      } else {
+        toast('エラー: ' + (res.error||''), 'error');
+      }
+    })
+    .withFailureHandler(function(err) { toast('エラー: ' + (err.message||err), 'error'); })
+    .exportCsv(dept);
+}
+
+function downloadCsv() {
+  var csv = APP.csvData || document.getElementById('csvArea').value;
+  if (!csv) { toast('先にCSVを生成してください', 'warning'); return; }
+  var bom = '\uFEFF';
+  var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '引合管理_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSVをダウンロードしました', 'success');
+}
+
+// ===== 自動更新 =====
+function startAutoRefresh() {
+  if (APP.autoTimer) clearInterval(APP.autoTimer);
+  APP.countdown = 30;
+  APP.autoTimer = setInterval(function() {
+    APP.countdown--;
+    document.getElementById('refreshClock').textContent = '🔄 自動更新: ' + APP.countdown + '秒';
+    if (APP.countdown <= 0) {
+      loadData();
+    }
+  }, 1000);
+}
+
+function resetCountdown() {
+  APP.countdown = 30;
+  document.getElementById('refreshClock').textContent = '🔄 自動更新: 30秒';
+}
+
+// ===== テーブル状態 =====
+function setTableLoading() {
+  document.getElementById('tableBody').innerHTML =
+    '<tr><td colspan="14"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">データ読み込み中...</div></div></td></tr>';
+}
+
+function setTableError(msg) {
+  document.getElementById('tableBody').innerHTML =
+    '<tr><td colspan="14"><div class="error-wrap">' +
+    '<div class="error-icon">⚠️</div>' +
+    '<div class="error-title">データ取得に失敗しました</div>' +
+    '<div class="error-msg">' + esc(msg) + '</div>' +
+    '<button class="btn btn-primary btn-retry" onclick="loadData()">🔄 再試行</button>' +
+    '</div></td></tr>';
+}
+
+// ===== トースト通知 =====
+function toast(msg, type, duration) {
+  type = type || 'info';
+  duration = duration || 3000;
+  var container = document.getElementById('toastContainer');
+  var el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function() {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(50px)';
+    el.style.transition = 'all 0.3s';
+    setTimeout(function() { container.removeChild(el); }, 300);
+  }, duration);
+}
+
+// ===== ユーティリティ =====
+function setText(id, text) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function setStyle(id, prop, val) {
+  var el = document.getElementById(id);
+  if (el) el.style[prop] = val;
+}
+function getDeptName(key) {
+  return { ship_monitoring:'モニタリング', ship_control:'操船装置', ship_autonomous:'自律' }[key] || key;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmtEst(input) {
+  var v = input.value.replace(/,/g,'').replace(/[^0-9]/g,'');
+  if (!v) { input.value = ''; return; }
+  input.value = parseInt(v, 10).toLocaleString();
+}
+
+// ===== キーボードショートカット =====
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal.active').forEach(function(m) { m.classList.remove('active'); });
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+});
+</script>
+</body>
+</html>
