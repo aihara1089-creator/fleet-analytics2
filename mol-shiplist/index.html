@@ -120,7 +120,7 @@
   <!-- Timeline Gantt -->
   <section class="gantt-section">
     <div class="section-header">
-      <h2><i class="fas fa-stream"></i> 工事タイムライン（今後 24 ヶ月）</h2>
+      <h2><i class="fas fa-stream"></i> 工事タイムライン（全期間）</h2>
       <div class="legend-row">
         <span class="legend-item legend-keel"><span></span>起工</span>
         <span class="legend-item legend-launch"><span></span>進水</span>
@@ -140,27 +140,68 @@
       <input type="text" id="searchInput" placeholder="船名・建造番号・造船所で検索…" />
     </div>
     <div class="filter-group">
-      <select id="filterType" class="filter-select">
-        <option value="">すべての船種</option>
-      </select>
-      <select id="filterOwnership" class="filter-select">
-        <option value="">すべての所有形態</option>
-      </select>
-      <select id="filterYear" class="filter-select">
-        <option value="">すべての納期年</option>
-      </select>
-      <select id="filterStatus" class="filter-select">
-        <option value="">すべてのステータス</option>
-        <option value="upcoming90">工事予定 90日以内</option>
-        <option value="upcoming180">工事予定 180日以内</option>
-        <option value="delivery90">引渡 90日以内</option>
-      </select>
+      <!-- 船種 -->
+      <div class="mdd-wrap" id="mddType">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddTypeLabel">船種</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddTypeMenu">
+          <div class="mdd-search-wrap"><i class="fas fa-search"></i><input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" /></div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddTypeList"></div>
+        </div>
+      </div>
+      <!-- 所有形態 -->
+      <div class="mdd-wrap" id="mddOwnership">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddOwnershipLabel">所有形態</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddOwnershipMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddOwnershipList"></div>
+        </div>
+      </div>
+      <!-- 納期年 -->
+      <div class="mdd-wrap" id="mddYear">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddYearLabel">納期年</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddYearMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddYearList"></div>
+        </div>
+      </div>
+      <!-- ステータス -->
+      <div class="mdd-wrap" id="mddStatus">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddStatusLabel">ステータス</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddStatusMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて（全件）</label>
+          <div class="mdd-list" id="mddStatusList">
+            <label class="mdd-item"><input type="checkbox" value="upcoming90"  /> 工事予定 90日以内</label>
+            <label class="mdd-item"><input type="checkbox" value="upcoming180" /> 工事予定 180日以内</label>
+            <label class="mdd-item"><input type="checkbox" value="delivery90"  /> 引渡 90日以内</label>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="action-group">
       <button class="btn-action" id="btnExport"><i class="fas fa-download"></i> エクスポート</button>
       <button class="btn-action btn-secondary" id="btnReset"><i class="fas fa-redo"></i> リセット</button>
     </div>
   </section>
+
+  <!-- Active filter chips bar -->
+  <div class="active-filters-bar hidden" id="activeFiltersBar">
+    <span class="af-label"><i class="fas fa-filter"></i> 絞込中：</span>
+    <div class="af-chips" id="afChips"></div>
+    <button class="af-clear" id="afClearAll"><i class="fas fa-times"></i> すべて解除</button>
+  </div>
 
   <!-- Table -->
   <section class="table-section">

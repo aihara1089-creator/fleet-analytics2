@@ -72,6 +72,23 @@ const PAGE_SIZE = 25;
 let visibleCols = COLUMN_DEFS.filter(c=>c.default).map(c=>c.key);
 let charts      = {};
 
+// Multi-select filter state (empty Set = all pass)
+const filterState = {
+  type:      new Set(),
+  ownership: new Set(),
+  year:      new Set(),
+  status:    new Set(),  // 'upcoming90' | 'upcoming180' | 'delivery90'
+};
+
+// MDD definitions
+const MDD_DEFS = [
+  { id:'mddType',      stateKey:'type',      labelId:'mddTypeLabel',      listId:'mddTypeList',      menuId:'mddTypeMenu',      allLabel:'船種',    hasSearch:true,  fixed:null },
+  { id:'mddOwnership', stateKey:'ownership', labelId:'mddOwnershipLabel', listId:'mddOwnershipList', menuId:'mddOwnershipMenu', allLabel:'所有形態', hasSearch:false, fixed:null },
+  { id:'mddYear',      stateKey:'year',      labelId:'mddYearLabel',      listId:'mddYearList',      menuId:'mddYearMenu',      allLabel:'納期年',   hasSearch:false, fixed:null },
+  { id:'mddStatus',    stateKey:'status',    labelId:'mddStatusLabel',    listId:'mddStatusList',    menuId:'mddStatusMenu',    allLabel:'ステータス', hasSearch:false,
+    fixed:[ {value:'upcoming90',label:'工事予定 90日以内'},{value:'upcoming180',label:'工事予定 180日以内'},{value:'delivery90',label:'引渡 90日以内'} ] },
+];
+
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
@@ -368,31 +385,51 @@ function renderCharts(stats) {
 }
 
 // ============================================================
-// RENDER GANTT
+// RENDER GANTT  ─ 全データ期間を表示
 // ============================================================
 function renderGantt(rows) {
   const container = document.getElementById('ganttContainer');
 
-  // Build month headers: today-2 months → today+22 months = 24 cols
-  const startMonth = new Date(TODAY.getFullYear(), TODAY.getMonth()-2, 1);
-  const MONTHS = 26;
-  const months = [];
-  for(let i=0; i<MONTHS; i++) {
-    const d = new Date(startMonth.getFullYear(), startMonth.getMonth()+i, 1);
-    months.push(d);
-  }
-  const ganttEnd = new Date(months[months.length-1].getFullYear(), months[months.length-1].getMonth()+1, 1);
+  // データ内の全マイルストーン日付を収集して最小・最大月を求める
+  let minDate = null, maxDate = null;
+  rows.forEach(r => {
+    MILESTONES.forEach(m => {
+      const d = r._dates[m.key] || r._dates[m.planned];
+      if (!d) return;
+      if (!minDate || d < minDate) minDate = d;
+      if (!maxDate || d > maxDate) maxDate = d;
+    });
+  });
 
-  // Filter rows that have any milestone in range
-  const ganttRows = rows.filter(r=>{
-    return MILESTONES.some(m=>{
+  // 日付データがなければ今後24ヶ月をデフォルト表示
+  if (!minDate) {
+    minDate = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
+    maxDate = new Date(TODAY.getFullYear(), TODAY.getMonth() + 23, 1);
+  }
+
+  // 月の始端・終端に丸めて前後1ヶ月の余白を追加
+  const startMonth = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1);
+  const endMonth   = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 1);
+
+  // 月の配列を生成
+  const months = [];
+  let cur = new Date(startMonth);
+  while (cur < endMonth) {
+    months.push(new Date(cur));
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  const ganttEnd = endMonth;
+
+  // 全行を使う（フィルタリング済みの rows をそのまま受け取る）
+  const ganttRows = rows.filter(r =>
+    MILESTONES.some(m => {
       const d = r._dates[m.key] || r._dates[m.planned];
       return d && d >= startMonth && d <= ganttEnd;
-    });
-  }).slice(0,40); // max 40 rows
+    })
+  );
 
   if(ganttRows.length===0) {
-    container.innerHTML = '<p class="empty-msg">今後24ヶ月以内に工程予定の船舶がありません</p>';
+    container.innerHTML = '<p class="empty-msg">表示できる工程予定データがありません</p>';
     return;
   }
 
@@ -453,20 +490,157 @@ function renderGantt(rows) {
 }
 
 // ============================================================
-// FILTER DROPDOWNS
+// FILTER DROPDOWNS  (multi-select custom dropdown)
 // ============================================================
+function updateMddLabel(def) {
+  const sel   = filterState[def.stateKey];
+  const btn   = document.getElementById(def.id).querySelector('.mdd-btn');
+  const label = document.getElementById(def.labelId);
+  btn.querySelectorAll('.mdd-badge').forEach(b => b.remove());
+  if (sel.size === 0) {
+    label.textContent = def.allLabel;
+    btn.classList.remove('active');
+  } else {
+    label.textContent = def.allLabel;
+    const badge = document.createElement('span');
+    badge.className = 'mdd-badge';
+    badge.textContent = sel.size;
+    btn.appendChild(badge);
+    btn.classList.add('active');
+  }
+}
+
+function syncMddCheckboxes(def) {
+  const sel  = filterState[def.stateKey];
+  const list = document.getElementById(def.listId);
+  const allCb = document.getElementById(def.menuId).querySelector('.mdd-all input');
+  list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = sel.size === 0 || sel.has(cb.value);
+  });
+  if (allCb) allCb.checked = sel.size === 0;
+}
+
+function buildMddEvents(def) {
+  const menuEl = document.getElementById(def.menuId);
+  const listEl = document.getElementById(def.listId);
+  const allCb  = menuEl.querySelector('.mdd-all input');
+
+  if (allCb) {
+    allCb.addEventListener('change', () => {
+      filterState[def.stateKey].clear();
+      listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+      allCb.checked = true;
+      updateMddLabel(def);
+      applyFilters();
+    });
+  }
+
+  listEl.addEventListener('change', e => {
+    const cb = e.target;
+    if (cb.type !== 'checkbox') return;
+    const val = cb.value;
+    const sel = filterState[def.stateKey];
+    if (cb.checked) { sel.add(val); } else { sel.delete(val); }
+    const allItems = [...listEl.querySelectorAll('input[type="checkbox"]')];
+    if (allItems.every(c => c.checked)) sel.clear();
+    syncMddCheckboxes(def);
+    updateMddLabel(def);
+    applyFilters();
+  });
+
+  if (def.hasSearch) {
+    const searchInput = menuEl.querySelector('.mdd-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.toLowerCase();
+        listEl.querySelectorAll('.mdd-item').forEach(item => {
+          item.classList.toggle('hidden-item', q !== '' && !item.textContent.toLowerCase().includes(q));
+        });
+      });
+    }
+  }
+}
+
+function populateMddList(def, values) {
+  const listEl = document.getElementById(def.listId);
+  if (def.fixed) {
+    syncMddCheckboxes(def);
+    buildMddEvents(def);
+    return;
+  }
+  listEl.innerHTML = values.map(v =>
+    `<label class="mdd-item"><input type="checkbox" value="${String(v).replace(/"/g,'&quot;')}" />${v}</label>`
+  ).join('');
+  syncMddCheckboxes(def);
+  buildMddEvents(def);
+}
+
+function setupMddToggles() {
+  MDD_DEFS.forEach(def => {
+    const wrap = document.getElementById(def.id);
+    const btn  = wrap.querySelector('.mdd-btn');
+    const menu = document.getElementById(def.menuId);
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = !menu.classList.contains('hidden');
+      MDD_DEFS.forEach(d => {
+        document.getElementById(d.menuId).classList.add('hidden');
+        document.getElementById(d.id).querySelector('.mdd-btn').classList.remove('open');
+      });
+      if (!isOpen) { menu.classList.remove('hidden'); btn.classList.add('open'); }
+    });
+  });
+  document.addEventListener('click', () => {
+    MDD_DEFS.forEach(d => {
+      document.getElementById(d.menuId).classList.add('hidden');
+      document.getElementById(d.id).querySelector('.mdd-btn').classList.remove('open');
+    });
+  });
+  document.querySelectorAll('.mdd-dropdown').forEach(el => {
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+}
+
+function renderActiveFiltersBar() {
+  const bar   = document.getElementById('activeFiltersBar');
+  const chips = document.getElementById('afChips');
+  const labelMap = { type:'船種', ownership:'所有形態', year:'年', status:'ステータス' };
+  const statusLabel = { upcoming90:'工事90日', upcoming180:'工事180日', delivery90:'引渡90日' };
+  let html = ''; let any = false;
+  MDD_DEFS.forEach(def => {
+    const sel = filterState[def.stateKey];
+    if (sel.size === 0) return;
+    any = true;
+    [...sel].forEach(v => {
+      const disp = def.stateKey === 'status' ? (statusLabel[v]||v) : v;
+      html += `<span class="af-chip" data-key="${def.stateKey}" data-val="${v}">
+        ${labelMap[def.stateKey]}: ${disp} <i class="fas fa-times"></i>
+      </span>`;
+    });
+  });
+  chips.innerHTML = html;
+  bar.classList.toggle('hidden', !any);
+  chips.querySelectorAll('.af-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      filterState[chip.dataset.key].delete(chip.dataset.val);
+      const def = MDD_DEFS.find(d => d.stateKey === chip.dataset.key);
+      if (def) { syncMddCheckboxes(def); updateMddLabel(def); }
+      applyFilters();
+    });
+  });
+}
+
 function buildFilters(rows) {
   const types  = [...new Set(rows.map(r=>r.VESSEL_TYPE).filter(Boolean))].sort();
   const owners = [...new Set(rows.map(r=>r.OWNERSHIP_TYPE_BEFORE_DELIVERY).filter(Boolean))].sort();
-  const years  = [...new Set(rows.map(r=>{ const d=getDeliveryDate(r); return d?d.getFullYear():null; }).filter(Boolean))].sort();
+  const years  = [...new Set(rows.map(r=>{ const d=getDeliveryDate(r); return d?d.getFullYear():null; }).filter(Boolean))].sort((a,b)=>a-b);
 
-  const fType  = document.getElementById('filterType');
-  const fOwner = document.getElementById('filterOwnership');
-  const fYear  = document.getElementById('filterYear');
+  populateMddList(MDD_DEFS[0], types);
+  populateMddList(MDD_DEFS[1], owners);
+  populateMddList(MDD_DEFS[2], years.map(String));
+  populateMddList(MDD_DEFS[3], []); // status は固定
 
-  fType.innerHTML  = '<option value="">すべての船種</option>'  + types.map(t=>`<option>${t}</option>`).join('');
-  fOwner.innerHTML = '<option value="">すべての所有形態</option>'+ owners.map(o=>`<option>${o}</option>`).join('');
-  fYear.innerHTML  = '<option value="">すべての納期年</option>'  + years.map(y=>`<option>${y}</option>`).join('');
+  setupMddToggles();
 }
 
 // ============================================================
@@ -535,7 +709,11 @@ function renderTable() {
   const pageRows = filtered.slice(start, start+PAGE_SIZE);
   document.getElementById('tableHead').innerHTML = buildTableHead();
   document.getElementById('tableBody').innerHTML = buildTableRows(pageRows);
-  document.getElementById('tableCount').textContent = `${filtered.length} 件表示`;
+  // カウント表示: 絞込中は「N / M件」スタイル
+  const hasFilter = !!(document.getElementById('searchInput').value || Object.values(filterState).some(s=>s.size>0));
+  document.getElementById('tableCount').innerHTML = hasFilter
+    ? `<span style="color:var(--blue-600);font-weight:700">${filtered.length}</span> <span style="color:var(--slate-400)">/</span> ${allData.length} 件<span style="color:var(--slate-400);font-size:.75rem;margin-left:4px">（絞込中）</span>`
+    : `${allData.length} 件（全件）`;
   renderPagination();
 
   // Sort icons
@@ -618,33 +796,39 @@ function applySort() {
 }
 
 function applyFilters() {
-  const q     = document.getElementById('searchInput').value.toLowerCase();
-  const type  = document.getElementById('filterType').value;
-  const owner = document.getElementById('filterOwnership').value;
-  const year  = document.getElementById('filterYear').value;
-  const status= document.getElementById('filterStatus').value;
+  const q      = document.getElementById('searchInput').value.toLowerCase();
+  const types  = filterState.type;
+  const owners = filterState.ownership;
+  const years  = filterState.year;
+  const stats  = filterState.status;
 
-  filtered = allData.filter(r=>{
+  filtered = allData.filter(r => {
     if(q && ![r.VESSEL_NAME,r.BUILDER,r.BUILDERS_VESSEL_NUMBER,r.YARD,r.BUILDER_YARD].some(v=>(v||'').toLowerCase().includes(q))) return false;
-    if(type  && r.VESSEL_TYPE!==type)  return false;
-    if(owner && r.OWNERSHIP_TYPE_BEFORE_DELIVERY!==owner) return false;
-    if(year) {
+    if(types.size  && !types.has(r.VESSEL_TYPE))  return false;
+    if(owners.size && !owners.has(r.OWNERSHIP_TYPE_BEFORE_DELIVERY)) return false;
+    if(years.size) {
       const d = getDeliveryDate(r);
-      if(!d||String(d.getFullYear())!==year) return false;
+      if(!d || !years.has(String(d.getFullYear()))) return false;
     }
-    if(status) {
+    if(stats.size) {
       const keel = r._dates['CONSTRUCTION_START_DATE']||r._dates['PLANNED_CONSTRUCTION_START_DATE'];
       const del  = getDeliveryDate(r);
       const now  = TODAY.getTime();
-      if(status==='upcoming90'  && !(keel && keel-now>=0 && keel-now<=DAYS_90)) return false;
-      if(status==='upcoming180' && !(keel && keel-now>=0 && keel-now<=DAYS_180)) return false;
-      if(status==='delivery90'  && !(del  && del-now>=0  && del-now<=DAYS_90)) return false;
+      // OR 判定：いずれかの選択ステータスにマッチすれば通過
+      const pass = [...stats].some(st => {
+        if(st==='upcoming90'  && keel && keel-now>=0 && keel-now<=DAYS_90)  return true;
+        if(st==='upcoming180' && keel && keel-now>=0 && keel-now<=DAYS_180) return true;
+        if(st==='delivery90'  && del  && del-now>=0  && del-now<=DAYS_90)   return true;
+        return false;
+      });
+      if(!pass) return false;
     }
     return true;
   });
   applySort();
   currentPage = 1;
   renderTable();
+  renderActiveFiltersBar();
 }
 
 // ============================================================
@@ -819,6 +1003,9 @@ function loadData(csvText) {
     if(allData.length===0) { toast('データが見つかりませんでした','error'); return; }
 
     filtered = [...allData];
+    // フィルター状態リセット
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+
     const stats = analyzeData(allData);
 
     // Switch view
@@ -832,6 +1019,7 @@ function loadData(csvText) {
     renderGantt(allData);
     buildFilters(allData);
     buildColToggle();
+    renderActiveFiltersBar();
 
     // Default sort by next milestone date
     sortKey = '_status'; sortDir = 1;
@@ -885,10 +1073,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Sample data
   document.getElementById('btnSample').addEventListener('click', loadSampleData);
 
-  // Filters
-  ['searchInput','filterType','filterOwnership','filterYear','filterStatus'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', applyFilters);
-    document.getElementById(id).addEventListener('change', applyFilters);
+  // Search input
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+  // Active filter bar 「すべて解除」
+  document.getElementById('afClearAll').addEventListener('click', () => {
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+    MDD_DEFS.forEach(def => { syncMddCheckboxes(def); updateMddLabel(def); });
+    applyFilters();
   });
 
   // Export
@@ -897,10 +1089,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Reset
   document.getElementById('btnReset').addEventListener('click', ()=>{
     document.getElementById('searchInput').value = '';
-    document.getElementById('filterType').value  = '';
-    document.getElementById('filterOwnership').value = '';
-    document.getElementById('filterYear').value  = '';
-    document.getElementById('filterStatus').value = '';
+    Object.keys(filterState).forEach(k => filterState[k].clear());
+    MDD_DEFS.forEach(def => { syncMddCheckboxes(def); updateMddLabel(def); });
     applyFilters();
     toast('フィルターをリセットしました','info');
   });
