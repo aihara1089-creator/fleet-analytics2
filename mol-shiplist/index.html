@@ -120,7 +120,9 @@
   <!-- Timeline Gantt -->
   <section class="gantt-section">
     <div class="section-header">
-      <h2><i class="fas fa-stream"></i> 工事タイムライン（全期間）</h2>
+      <h2><i class="fas fa-stream"></i> 工事タイムライン
+        <span class="gantt-range-display" id="ganttRangeDisplay"></span>
+      </h2>
       <div class="legend-row">
         <span class="legend-item legend-keel"><span></span>起工</span>
         <span class="legend-item legend-launch"><span></span>進水</span>
@@ -128,6 +130,29 @@
         <span class="legend-item legend-delivery"><span></span>引渡</span>
       </div>
     </div>
+
+    <!-- 期間コントロールバー -->
+    <div class="gantt-ctrl-bar">
+      <div class="gantt-ctrl-quick">
+        <span class="gantt-ctrl-label"><i class="fas fa-calendar-alt"></i> 表示期間：</span>
+        <button class="gantt-quick-btn" data-months="3">3ヶ月</button>
+        <button class="gantt-quick-btn" data-months="6">6ヶ月</button>
+        <button class="gantt-quick-btn" data-months="12">12ヶ月</button>
+        <button class="gantt-quick-btn" data-months="24">24ヶ月</button>
+        <button class="gantt-quick-btn" data-months="36">36ヶ月</button>
+        <button class="gantt-quick-btn active" data-months="0">全期間</button>
+      </div>
+      <div class="gantt-ctrl-custom">
+        <span class="gantt-ctrl-label">カスタム：</span>
+        <input type="month" id="ganttFrom" class="gantt-month-input" title="開始年月" />
+        <span class="gantt-ctrl-sep">〜</span>
+        <input type="month" id="ganttTo"   class="gantt-month-input" title="終了年月" />
+        <button class="gantt-apply-btn" id="ganttApply">
+          <i class="fas fa-check"></i> 適用
+        </button>
+      </div>
+    </div>
+
     <div class="gantt-container" id="ganttContainer">
       <p class="empty-msg">データがありません</p>
     </div>
@@ -207,9 +232,20 @@
   <section class="table-section">
     <div class="table-info-bar">
       <span id="tableCount">0 件表示</span>
-      <div class="col-toggle-wrap">
-        <button class="btn-toggle-col" id="btnColToggle"><i class="fas fa-columns"></i> 列表示</button>
-        <div class="col-toggle-menu hidden" id="colToggleMenu"></div>
+      <div class="table-info-right">
+        <label class="page-size-label">表示件数：
+          <select id="pageSizeSelect" class="page-size-select">
+            <option value="25">25件</option>
+            <option value="50">50件</option>
+            <option value="100">100件</option>
+            <option value="200">200件</option>
+            <option value="all">全件表示</option>
+          </select>
+        </label>
+        <div class="col-toggle-wrap">
+          <button class="btn-toggle-col" id="btnColToggle"><i class="fas fa-columns"></i> 列表示</button>
+          <div class="col-toggle-menu hidden" id="colToggleMenu"></div>
+        </div>
       </div>
     </div>
     <div class="table-wrapper">

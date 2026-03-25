@@ -68,9 +68,13 @@ let filtered    = [];
 let sortKey     = '';
 let sortDir     = 1;
 let currentPage = 1;
-const PAGE_SIZE = 25;
+let PAGE_SIZE   = 25;   // changed dynamically by page-size selector
+let showAll     = false; // 全件表示フラグ
 let visibleCols = COLUMN_DEFS.filter(c=>c.default).map(c=>c.key);
 let charts      = {};
+
+// Gantt range state: null = auto (full range)
+let ganttRange = { from: null, to: null }; // Date objects (month start)
 
 // Multi-select filter state (empty Set = all pass)
 const filterState = {
@@ -385,12 +389,11 @@ function renderCharts(stats) {
 }
 
 // ============================================================
-// RENDER GANTT  ─ 全データ期間を表示
+// RENDER GANTT  ─ ganttRange に従って期間を表示
 // ============================================================
-function renderGantt(rows) {
-  const container = document.getElementById('ganttContainer');
 
-  // データ内の全マイルストーン日付を収集して最小・最大月を求める
+/** データ全体の最小・最大マイルストーン日を返す */
+function calcDataRange(rows) {
   let minDate = null, maxDate = null;
   rows.forEach(r => {
     MILESTONES.forEach(m => {
@@ -400,16 +403,55 @@ function renderGantt(rows) {
       if (!maxDate || d > maxDate) maxDate = d;
     });
   });
+  return { minDate, maxDate };
+}
 
-  // 日付データがなければ今後24ヶ月をデフォルト表示
-  if (!minDate) {
-    minDate = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
-    maxDate = new Date(TODAY.getFullYear(), TODAY.getMonth() + 23, 1);
+/** ganttRange の From/To 入力欄を allData 範囲で初期化 */
+function initGanttRangeInputs() {
+  const { minDate, maxDate } = calcDataRange(allData);
+  if (!minDate) return;
+  const fromVal = `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}`;
+  const toVal   = `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}`;
+  // min/max 属性も設定
+  const fromEl = document.getElementById('ganttFrom');
+  const toEl   = document.getElementById('ganttTo');
+  fromEl.min = fromVal; fromEl.max = toVal;
+  toEl.min   = fromVal; toEl.max   = toVal;
+  // 初期値（全期間）
+  fromEl.value = fromVal;
+  toEl.value   = toVal;
+}
+
+function renderGantt(rows) {
+  const container = document.getElementById('ganttContainer');
+
+  // ── 表示期間の決定 ──────────────────────────────────────────
+  let startMonth, endMonth;
+
+  if (ganttRange.from && ganttRange.to) {
+    // カスタム or クイックボタンで指定した範囲
+    startMonth = new Date(ganttRange.from);
+    endMonth   = new Date(ganttRange.to.getFullYear(), ganttRange.to.getMonth() + 1, 1);
+  } else {
+    // 自動（全期間）
+    const { minDate, maxDate } = calcDataRange(rows);
+    if (!minDate) {
+      // データなし → デフォルト12ヶ月
+      startMonth = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+      endMonth   = new Date(TODAY.getFullYear(), TODAY.getMonth() + 12, 1);
+    } else {
+      startMonth = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1);
+      endMonth   = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 1);
+    }
   }
 
-  // 月の始端・終端に丸めて前後1ヶ月の余白を追加
-  const startMonth = new Date(minDate.getFullYear(), minDate.getMonth() - 1, 1);
-  const endMonth   = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 1);
+  // 範囲表示ラベルを更新
+  const rangeDisp = document.getElementById('ganttRangeDisplay');
+  if (rangeDisp) {
+    const fmt = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    const endLabel = new Date(endMonth.getFullYear(), endMonth.getMonth() - 1, 1);
+    rangeDisp.textContent = `（${fmt(startMonth)} 〜 ${fmt(endLabel)}）`;
+  }
 
   // 月の配列を生成
   const months = [];
@@ -424,7 +466,7 @@ function renderGantt(rows) {
   const ganttRows = rows.filter(r =>
     MILESTONES.some(m => {
       const d = r._dates[m.key] || r._dates[m.planned];
-      return d && d >= startMonth && d <= ganttEnd;
+      return d != null; // 日付があれば全期間表示
     })
   );
 
@@ -705,15 +747,20 @@ function buildTableRows(rows) {
 }
 
 function renderTable() {
-  const start = (currentPage-1)*PAGE_SIZE;
-  const pageRows = filtered.slice(start, start+PAGE_SIZE);
+  const pageRows = showAll ? filtered : filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
   document.getElementById('tableHead').innerHTML = buildTableHead();
   document.getElementById('tableBody').innerHTML = buildTableRows(pageRows);
   // カウント表示: 絞込中は「N / M件」スタイル
   const hasFilter = !!(document.getElementById('searchInput').value || Object.values(filterState).some(s=>s.size>0));
-  document.getElementById('tableCount').innerHTML = hasFilter
-    ? `<span style="color:var(--blue-600);font-weight:700">${filtered.length}</span> <span style="color:var(--slate-400)">/</span> ${allData.length} 件<span style="color:var(--slate-400);font-size:.75rem;margin-left:4px">（絞込中）</span>`
-    : `${allData.length} 件（全件）`;
+  const countEl = document.getElementById('tableCount');
+  if (hasFilter) {
+    countEl.innerHTML = `<span style="color:var(--blue-600);font-weight:700">${filtered.length}</span> <span style="color:var(--slate-400)">/</span> ${allData.length} 件<span style="color:var(--slate-400);font-size:.75rem;margin-left:4px">（絞込中）</span>`;
+  } else {
+    countEl.innerHTML = `${allData.length} 件（全件）`;
+  }
+  // ページサイズセレクターの同期
+  const psEl = document.getElementById('pageSizeSelect');
+  if (psEl) psEl.value = showAll ? 'all' : String(PAGE_SIZE);
   renderPagination();
 
   // Sort icons
@@ -740,8 +787,9 @@ function renderTable() {
 }
 
 function renderPagination() {
-  const total = Math.ceil(filtered.length/PAGE_SIZE);
   const pg = document.getElementById('pagination');
+  if (showAll) { pg.innerHTML = ''; return; }
+  const total = Math.ceil(filtered.length/PAGE_SIZE);
   if(total<=1) { pg.innerHTML=''; return; }
 
   let html = `<button class="page-btn" id="pgPrev" ${currentPage===1?'disabled':''}>
@@ -1095,13 +1143,30 @@ document.addEventListener('DOMContentLoaded', ()=>{
     toast('フィルターをリセットしました','info');
   });
 
+
+
   // Back
   document.getElementById('btnBack').addEventListener('click', ()=>{
     document.getElementById('dashboard').classList.add('hidden');
     document.getElementById('uploadSection').classList.remove('hidden');
     document.getElementById('csvInput').value='';
     allData=[]; filtered=[];
+    showAll = false;
+    PAGE_SIZE = 25;
     Object.values(charts).forEach(c=>c.destroy()); charts={};
+  });
+
+  // Page size selector
+  document.getElementById('pageSizeSelect').addEventListener('change', e => {
+    const val = e.target.value;
+    if (val === 'all') {
+      showAll = true;
+    } else {
+      showAll = false;
+      PAGE_SIZE = parseInt(val, 10);
+    }
+    currentPage = 1;
+    renderTable();
   });
 
   // Column toggle
