@@ -877,6 +877,8 @@ function applyFilters() {
   currentPage = 1;
   renderTable();
   renderActiveFiltersBar();
+  // ガントもフィルター結果で再描画
+  if (allData.length) renderGantt(filtered);
 }
 
 // ============================================================
@@ -1064,6 +1066,12 @@ function loadData(csvText) {
     renderKPI(allData, stats);
     renderBanner(allData);
     renderCharts(stats);
+    // Ganttの期間入力をデータ範囲で初期化してから描画
+    ganttRange.from = null; ganttRange.to = null;
+    document.querySelectorAll('.gantt-quick-btn').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('.gantt-quick-btn[data-months="0"]');
+    if (allBtn) allBtn.classList.add('active');
+    initGanttRangeInputs();
     renderGantt(allData);
     buildFilters(allData);
     buildColToggle();
@@ -1177,6 +1185,63 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(!e.target.closest('.col-toggle-wrap')) {
       document.getElementById('colToggleMenu').classList.add('hidden');
     }
+  });
+
+  // Gantt quick-select buttons (3/6/12/24/36ヶ月 / 全期間)
+  document.querySelectorAll('.gantt-quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // アクティブ状態を更新
+      document.querySelectorAll('.gantt-quick-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const months = parseInt(btn.dataset.months, 10);
+      if (months === 0) {
+        // 全期間 → ganttRange をリセットして自動計算
+        ganttRange.from = null;
+        ganttRange.to   = null;
+        // 入力欄もデータ範囲に戻す
+        initGanttRangeInputs();
+      } else {
+        // 今月を起点に N ヶ月間
+        const from = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+        const to   = new Date(TODAY.getFullYear(), TODAY.getMonth() + months - 1, 1);
+        ganttRange.from = from;
+        ganttRange.to   = to;
+        // 入力欄を同期
+        const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const fromEl = document.getElementById('ganttFrom');
+        const toEl   = document.getElementById('ganttTo');
+        if (fromEl) fromEl.value = fmt(from);
+        if (toEl)   toEl.value   = fmt(to);
+      }
+      renderGantt(filtered.length ? filtered : allData);
+    });
+  });
+
+  // Gantt カスタム範囲「適用」ボタン
+  document.getElementById('ganttApply').addEventListener('click', () => {
+    const fromEl = document.getElementById('ganttFrom');
+    const toEl   = document.getElementById('ganttTo');
+    const fromVal = fromEl ? fromEl.value : '';
+    const toVal   = toEl   ? toEl.value   : '';
+    if (!fromVal || !toVal) {
+      toast('開始・終了年月を両方入力してください', 'error');
+      return;
+    }
+    // "YYYY-MM" → Date (月初)
+    const [fy, fm] = fromVal.split('-').map(Number);
+    const [ty, tm] = toVal.split('-').map(Number);
+    const from = new Date(fy, fm - 1, 1);
+    const to   = new Date(ty, tm - 1, 1);
+    if (from > to) {
+      toast('開始年月は終了年月以前にしてください', 'error');
+      return;
+    }
+    ganttRange.from = from;
+    ganttRange.to   = to;
+    // クイックボタンのアクティブを解除
+    document.querySelectorAll('.gantt-quick-btn').forEach(b => b.classList.remove('active'));
+    renderGantt(filtered.length ? filtered : allData);
   });
 
   // Modal close
