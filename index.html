@@ -562,8 +562,9 @@ function loadCases(silent) {
   return fetch(API + '/cases')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (!data.ok) throw new Error(data.error || '取得失敗');
-      APP.allCases = data.cases || [];
+      var cases = Array.isArray(data) ? data : (data.cases || []);
+      if (!Array.isArray(data) && data.ok === false) throw new Error(data.error || '取得失敗');
+      APP.allCases = cases;
       APP.nextId = data.nextId || APP.allCases.length + 1;
       recalcDates();
       updateDashboard();

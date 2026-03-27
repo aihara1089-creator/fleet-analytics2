@@ -59,7 +59,7 @@ async function getNextId() {
 // 全案件取得
 app.get('/api/cases', async (req, res) => {
   try {
-    const cases = await Case.find({}).sort({ id: 1 }).lean();
+    const cases = await Case.find({}, { _id: 0 }).sort({ id: 1 }).lean();
     res.json(cases);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
