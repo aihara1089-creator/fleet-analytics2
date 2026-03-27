@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "express": "^5.2.1",
+    "mongoose": "^9.3.3",
     "pm2": "^6.0.14"
   }
 }
