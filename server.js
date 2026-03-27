@@ -34,7 +34,7 @@ const caseSchema = new mongoose.Schema({
   isOverdue:      { type: Boolean, default: false },
   isLocked:       { type: Boolean, default: false },
   lockedBy:       String,
-}, { _id: false });
+}, { versionKey: false });
 
 const CounterSchema = new mongoose.Schema({
   _id:    String,
@@ -72,8 +72,10 @@ app.post('/api/cases', async (req, res) => {
     const c = req.body;
     c.id = await getNextId();
     c.updateTime = now();
-    await Case.create(c);
-    res.json({ ok: true, case: c });
+    const created = await Case.create(c);
+    const plain = created.toObject();
+    delete plain._id;
+    res.json({ ok: true, case: plain });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
