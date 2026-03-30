@@ -38,6 +38,13 @@
   --yellow-400:#facc15;
   --yellow-100:#fef9c3;
 
+  --purple-600: #7c3aed;
+  --purple-100: #ede9fe;
+  --purple-50:  #f5f3ff;
+  --teal-600:   #0d9488;
+  --teal-100:   #ccfbf1;
+  --teal-50:    #f0fdfa;
+
   --font: 'Inter', 'Hiragino Sans', 'Meiryo', sans-serif;
   --radius: 10px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
@@ -217,6 +224,8 @@ body {
 .kpi-icon.orange  { background: var(--orange-100); color: var(--orange-500); }
 .kpi-icon.green   { background: var(--green-100); color: var(--green-500); }
 .kpi-icon.slate   { background: var(--slate-100); color: var(--slate-600); }
+.kpi-icon.purple  { background: var(--purple-100); color: var(--purple-600); }
+.kpi-icon.teal    { background: var(--teal-100); color: var(--teal-600); }
 .kpi-value { font-size: 2rem; font-weight: 800; color: var(--slate-800); line-height: 1; }
 .kpi-label { font-size: .78rem; color: var(--slate-500); margin-top: 4px; }
 
@@ -731,6 +740,8 @@ body {
 .badge-normal  { background: var(--blue-100); color: var(--blue-700); }
 .badge-done    { background: var(--green-100); color: #15803d; }
 .badge-grey    { background: var(--slate-100); color: var(--slate-600); }
+.badge-quote   { background: var(--purple-100); color: var(--purple-600); }
+.badge-ordered { background: var(--teal-100); color: var(--teal-600); }
 
 /* Pagination */
 .pagination {

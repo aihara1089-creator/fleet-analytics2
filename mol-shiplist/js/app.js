@@ -14,6 +14,45 @@ TODAY.setHours(0,0,0,0);
 const DAYS_90  = 90  * 86400000;
 const DAYS_180 = 180 * 86400000;
 
+// ============================================================
+// ORDER STATUS MAPPING
+// ============================================================
+// CSV の ORDER_STATUS 列 or VESSEL_STATUS_OF_USE から自動判定
+// 'quote'   = 見積提出済み
+// 'ordered' = 受注済み（契約締結済・建造中など）
+// 'other'   = それ以外
+const ORDER_STATUS_MAP = {
+  // 見積提出済み扱い
+  '見積提出済み':   'quote',
+  '見積中':        'quote',
+  '見積提出':      'quote',
+  '提案中':        'quote',
+  '商談中':        'quote',
+  // 受注済み扱い
+  '受注済み':      'ordered',
+  '受注':          'ordered',
+  '契約締結済':    'ordered',
+  '契約締結済み':  'ordered',
+  '建造中':        'ordered',
+  '建造完了':      'ordered',
+  '就航済み':      'ordered',
+  '基本設計中':    'ordered',
+  '詳細設計中':    'ordered',
+  '設計中':        'ordered',
+};
+
+function getOrderStatus(row) {
+  // CSV に ORDER_STATUS 列があればそちらを優先
+  const raw = (row.ORDER_STATUS || row.VESSEL_STATUS_OF_USE || '').trim();
+  return ORDER_STATUS_MAP[raw] || 'other';
+}
+
+const ORDER_STATUS_LABEL = {
+  quote:   '見積提出済み',
+  ordered: '受注済み',
+  other:   '—',
+};
+
 // Column definitions: [key, label, group]
 const COLUMN_DEFS = [
   { key:'VESSEL_NAME',                   label:'船名',             group:'基本',    default:true  },
@@ -39,6 +78,7 @@ const COLUMN_DEFS = [
   { key:'PLANNED_SAILING_SPEED_KTS',     label:'速力(kts)',        group:'船型',    default:false },
   { key:'IMO_NO',                        label:'IMO番号',          group:'その他',  default:false },
   { key:'VESSEL_STATUS_OF_USE',          label:'使用状態',         group:'その他',  default:false },
+  { key:'_orderStatus',                  label:'受注状態',         group:'基本',    default:true  },
   { key:'SHIPBUILDING_CONTRUCT_PURCHASER',label:'発注者',          group:'その他',  default:false },
   { key:'REMARKS_TECHNICAL_DIV',         label:'技術部備考',       group:'その他',  default:false },
 ];
@@ -78,10 +118,11 @@ let ganttRange = { from: null, to: null }; // Date objects (month start)
 
 // Multi-select filter state (empty Set = all pass)
 const filterState = {
-  type:      new Set(),
-  ownership: new Set(),
-  year:      new Set(),
-  status:    new Set(),  // 'upcoming90' | 'upcoming180' | 'delivery90'
+  type:        new Set(),
+  ownership:   new Set(),
+  year:        new Set(),
+  status:      new Set(),      // 'upcoming90' | 'upcoming180' | 'delivery90'
+  orderStatus: new Set(),      // 'quote' | 'ordered'
 };
 
 // MDD definitions
@@ -89,8 +130,10 @@ const MDD_DEFS = [
   { id:'mddType',      stateKey:'type',      labelId:'mddTypeLabel',      listId:'mddTypeList',      menuId:'mddTypeMenu',      allLabel:'船種',    hasSearch:true,  fixed:null },
   { id:'mddOwnership', stateKey:'ownership', labelId:'mddOwnershipLabel', listId:'mddOwnershipList', menuId:'mddOwnershipMenu', allLabel:'所有形態', hasSearch:false, fixed:null },
   { id:'mddYear',      stateKey:'year',      labelId:'mddYearLabel',      listId:'mddYearList',      menuId:'mddYearMenu',      allLabel:'納期年',   hasSearch:false, fixed:null },
-  { id:'mddStatus',    stateKey:'status',    labelId:'mddStatusLabel',    listId:'mddStatusList',    menuId:'mddStatusMenu',    allLabel:'ステータス', hasSearch:false,
+  { id:'mddStatus',      stateKey:'status',      labelId:'mddStatusLabel',      listId:'mddStatusList',      menuId:'mddStatusMenu',      allLabel:'ステータス',  hasSearch:false,
     fixed:[ {value:'upcoming90',label:'工事予定 90日以内'},{value:'upcoming180',label:'工事予定 180日以内'},{value:'delivery90',label:'引渡 90日以内'} ] },
+  { id:'mddOrderStatus', stateKey:'orderStatus', labelId:'mddOrderStatusLabel', listId:'mddOrderStatusList', menuId:'mddOrderStatusMenu', allLabel:'受注状態',    hasSearch:false,
+    fixed:[ {value:'quote',label:'見積提出済み'},{value:'ordered',label:'受注済み'} ] },
 ];
 
 // ============================================================
@@ -217,7 +260,7 @@ function splitCSVLine(line) {
 // ============================================================
 function analyzeData(rows) {
   const now = TODAY.getTime();
-  let upcoming90=0, upcoming180=0, delivery90=0;
+  let upcoming90=0, upcoming180=0, delivery90=0, quoteCount=0, orderedCount=0;
   const typeCount={}, ownerCount={}, yearCount={};
 
   rows.forEach(r=>{
@@ -234,6 +277,10 @@ function analyzeData(rows) {
       const diff = del - now;
       if(diff >= 0 && diff <= DAYS_90) delivery90++;
     }
+    // Order status counts
+    const os = getOrderStatus(r);
+    if(os === 'quote')   quoteCount++;
+    if(os === 'ordered') orderedCount++;
     // Vessel type
     const vt = r.VESSEL_TYPE || '不明';
     typeCount[vt] = (typeCount[vt]||0)+1;
@@ -247,7 +294,7 @@ function analyzeData(rows) {
     }
   });
 
-  return { upcoming90, upcoming180, delivery90, typeCount, ownerCount, yearCount };
+  return { upcoming90, upcoming180, delivery90, quoteCount, orderedCount, typeCount, ownerCount, yearCount };
 }
 
 // ============================================================
@@ -258,6 +305,11 @@ function renderKPI(rows, stats) {
   document.getElementById('kpiUpcomingVal').textContent = stats.upcoming90;
   document.getElementById('kpiDeliveryVal').textContent = stats.delivery90;
   document.getElementById('kpiTypesVal').textContent    = Object.keys(stats.typeCount).length;
+  // 見積・受注 KPI
+  const qEl = document.getElementById('kpiQuoteVal');
+  const oEl = document.getElementById('kpiOrderedVal');
+  if(qEl) qEl.textContent = stats.quoteCount;
+  if(oEl) oEl.textContent = stats.orderedCount;
 
   document.getElementById('totalCount').innerHTML =
     `<i class="fas fa-ship"></i> ${rows.length} 隻`;
@@ -646,15 +698,15 @@ function setupMddToggles() {
 function renderActiveFiltersBar() {
   const bar   = document.getElementById('activeFiltersBar');
   const chips = document.getElementById('afChips');
-  const labelMap = { type:'船種', ownership:'所有形態', year:'年', status:'ステータス' };
-  const statusLabel = { upcoming90:'工事90日', upcoming180:'工事180日', delivery90:'引渡90日' };
+  const labelMap = { type:'船種', ownership:'所有形態', year:'年', status:'ステータス', orderStatus:'受注状態' };
+  const statusLabel = { upcoming90:'工事90日', upcoming180:'工事180日', delivery90:'引渡90日', quote:'見積提出済み', ordered:'受注済み' };
   let html = ''; let any = false;
   MDD_DEFS.forEach(def => {
     const sel = filterState[def.stateKey];
     if (sel.size === 0) return;
     any = true;
     [...sel].forEach(v => {
-      const disp = def.stateKey === 'status' ? (statusLabel[v]||v) : v;
+      const disp = (def.stateKey === 'status' || def.stateKey === 'orderStatus') ? (statusLabel[v]||v) : v;
       html += `<span class="af-chip" data-key="${def.stateKey}" data-val="${v}">
         ${labelMap[def.stateKey]}: ${disp} <i class="fas fa-times"></i>
       </span>`;
@@ -681,6 +733,7 @@ function buildFilters(rows) {
   populateMddList(MDD_DEFS[1], owners);
   populateMddList(MDD_DEFS[2], years.map(String));
   populateMddList(MDD_DEFS[3], []); // status は固定
+  populateMddList(MDD_DEFS[4], []); // orderStatus は固定
 
   setupMddToggles();
 }
@@ -689,6 +742,7 @@ function buildFilters(rows) {
 // TABLE RENDERING
 // ============================================================
 function buildTableHead() {
+  // _orderStatus は COLUMN_DEFS 内の列として描画する（下の buildTableRows で特別処理）
   const cols = COLUMN_DEFS.filter(c=>visibleCols.includes(c.key));
   const statusCol = `<th data-key="_status" class="status-col">
     ステータス <i class="fas fa-sort sort-icon"></i>
@@ -730,6 +784,13 @@ function buildTableRows(rows) {
     }
 
     const cells = cols.map(c=>{
+      // 受注状態バッジ（特別処理）
+      if(c.key === '_orderStatus') {
+        const os = getOrderStatus(r);
+        if(os === 'quote')   return `<td><span class="badge badge-quote"><i class="fas fa-file-alt"></i> 見積提出済み</span></td>`;
+        if(os === 'ordered') return `<td><span class="badge badge-ordered"><i class="fas fa-handshake"></i> 受注済み</span></td>`;
+        return `<td><span style="color:var(--slate-400)">—</span></td>`;
+      }
       let val = r[c.key] || '—';
       if(DATE_KEYS.includes(c.key)) {
         const d = r._dates[c.key];
@@ -848,7 +909,8 @@ function applyFilters() {
   const types  = filterState.type;
   const owners = filterState.ownership;
   const years  = filterState.year;
-  const stats  = filterState.status;
+  const stats       = filterState.status;
+  const orderStats  = filterState.orderStatus;
 
   filtered = allData.filter(r => {
     if(q && ![r.VESSEL_NAME,r.BUILDER,r.BUILDERS_VESSEL_NUMBER,r.YARD,r.BUILDER_YARD].some(v=>(v||'').toLowerCase().includes(q))) return false;
@@ -871,6 +933,7 @@ function applyFilters() {
       });
       if(!pass) return false;
     }
+    if(orderStats.size && !orderStats.has(getOrderStatus(r))) return false;
     return true;
   });
   applySort();
@@ -906,8 +969,14 @@ function buildColToggle() {
 // DETAIL MODAL
 // ============================================================
 function openModal(r) {
+  const modalOs = getOrderStatus(r);
+  const modalOsBadge = modalOs === 'quote'
+    ? `<span class="badge badge-quote" style="margin-left:8px;font-size:.75rem"><i class="fas fa-file-alt"></i> 見積提出済み</span>`
+    : modalOs === 'ordered'
+    ? `<span class="badge badge-ordered" style="margin-left:8px;font-size:.75rem"><i class="fas fa-handshake"></i> 受注済み</span>`
+    : '';
   document.getElementById('modalHeader').innerHTML = `
-    <div class="modal-title">${r.VESSEL_NAME||'（船名未定）'}</div>
+    <div class="modal-title">${r.VESSEL_NAME||'（船名未定）'}${modalOsBadge}</div>
     <div class="modal-subtitle">
       ${r.VESSEL_TYPE||''} ｜ ${r.BUILDER||''} ｜ 建造番号: ${r.BUILDERS_VESSEL_NUMBER||'—'} ｜ IMO: ${r.IMO_NO||'—'}
     </div>`;
@@ -949,6 +1018,7 @@ function openModal(r) {
           ['船級',r.VESSEL_CLASS_NAME||'—',false],
           ['発注者',r.SHIPBUILDING_CONTRUCT_PURCHASER||'—',false],
           ['使用状態',r.VESSEL_STATUS_OF_USE||'—',false],
+          ['受注状態', ORDER_STATUS_LABEL[getOrderStatus(r)], getOrderStatus(r)!=='other'],
           ['船名確定期限',formatDate(r._dates['VESSEL_NAME_FIX_DEADLINE']),false],
         ].map(([l,v,hl])=>`<div class="modal-field">
           <div class="modal-field-label">${l}</div>
@@ -1038,6 +1108,9 @@ function loadSampleData() {
     `OSHIMA-1,大島造船,大島工場,5001,MOL BRAVE,タンカー,TC,MOL,契約締結済,,パナマ,NK,パナマ,${d(-120)},,,${d(10)},${d(200)},,,${d(280)},${d(310)},${d(300)},${d(320)},MOL Chemical Tankers Ltd.,,249.9,243.0,43.8,21.0,14.8,15.5,60000,36000,105000,15.0,12000,9000008,,,,MOL,${d(-120)},MOL,${d(-40)},UID008`,
     `IMABARI-3,今治造船,今治工場,1003,MOL SPIRIT,コンテナ船,CONT,MOL,契約締結済,,パナマ,NK,パナマ,${d(-60)},,,${d(5)},${d(180)},,,${d(250)},${d(280)},${d(270)},${d(290)},MOL Containership Ltd.,メタノール対応型,366.0,350.0,51.0,30.0,14.5,15.2,150000,45000,145000,21.0,45000,9000009,,,,MOL,${d(-60)},MOL,${d(-5)},UID009`,
     `IMABARI-4,今治造船,今治工場,1004,MOL FUTURE,コンテナ船,CONT,MOL,基本設計中,,パナマ,NK,パナマ,${d(-30)},,,${d(30)},${d(210)},,,${d(280)},${d(310)},${d(300)},${d(320)},MOL Containership Ltd.,アンモニア対応型,366.0,350.0,51.0,30.0,14.5,15.2,150000,45000,145000,21.0,45000,9000010,,,,MOL,${d(-30)},MOL,${d(-3)},UID010`,
+    `KAWASAKI-1,川崎重工業,神戸工場,6001,MOL HORIZON,LNG船,LNG,MOL,見積提出済み,${d(30)},パナマ,NK,パナマ,,,,,,,,,,,${d(500)},${d(520)},MOL LNG Transport Ltd.,LNG二元燃料,295.0,284.0,46.0,26.0,11.5,12.5,100000,62000,,19.5,28000,,,,,MOL,,MOL,,UID011`,
+    `KAWASAKI-2,川崎重工業,神戸工場,6002,MOL AURORA,LNG船,LNG,MOL,見積提出済み,${d(60)},パナマ,NK,パナマ,,,,,,,,,,,${d(540)},${d(560)},MOL LNG Transport Ltd.,LNG二元燃料,295.0,284.0,46.0,26.0,11.5,12.5,100000,62000,,19.5,28000,,,,,MOL,,MOL,,UID012`,
+    `NSU-1,日本造船,長崎工場,7001,MOL SEEKER,バルクキャリア,BC,MOL,商談中,${d(45)},パナマ,NK,パナマ,,,,,,,,,,,${d(480)},${d(500)},MOL Bulk Carriers Ltd.,アンモニア対応型,230.0,225.0,43.0,20.0,13.5,14.2,80000,48000,82000,14.0,9500,,,,,MOL,,MOL,,UID013`,
   ];
 
   loadData(csvLines.join('\n'));

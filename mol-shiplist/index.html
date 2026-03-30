@@ -84,6 +84,20 @@
         <div class="kpi-label">船種数</div>
       </div>
     </div>
+    <div class="kpi-card" id="kpiQuote">
+      <div class="kpi-icon purple"><i class="fas fa-file-alt"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="kpiQuoteVal">0</div>
+        <div class="kpi-label">見積提出済み</div>
+      </div>
+    </div>
+    <div class="kpi-card" id="kpiOrdered">
+      <div class="kpi-icon teal"><i class="fas fa-handshake"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="kpiOrderedVal">0</div>
+        <div class="kpi-label">受注済み</div>
+      </div>
+    </div>
   </section>
 
   <!-- Timeline Alert Banner -->
@@ -211,6 +225,20 @@
             <label class="mdd-item"><input type="checkbox" value="upcoming90"  /> 工事予定 90日以内</label>
             <label class="mdd-item"><input type="checkbox" value="upcoming180" /> 工事予定 180日以内</label>
             <label class="mdd-item"><input type="checkbox" value="delivery90"  /> 引渡 90日以内</label>
+          </div>
+        </div>
+      </div>
+      <!-- 受注状態 -->
+      <div class="mdd-wrap" id="mddOrderStatus">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddOrderStatusLabel">受注状態</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddOrderStatusMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて（全件）</label>
+          <div class="mdd-list" id="mddOrderStatusList">
+            <label class="mdd-item"><input type="checkbox" value="quote"   /> <span class="badge badge-quote" style="font-size:.75rem"><i class="fas fa-file-alt"></i> 見積提出済み</span></label>
+            <label class="mdd-item"><input type="checkbox" value="ordered" /> <span class="badge badge-ordered" style="font-size:.75rem"><i class="fas fa-handshake"></i> 受注済み</span></label>
           </div>
         </div>
       </div>
