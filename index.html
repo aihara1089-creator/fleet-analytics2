@@ -198,7 +198,7 @@ textarea.form-control{min-height:80px;resize:vertical}
 
 <!-- HEADER -->
 <div class="header">
-  <h1>⚓ T-SOL 引合管理システム <span class="version-badge">v3.0</span></h1>
+  <h1>T-SOL 引合管理システム <span class="version-badge">v3.0</span></h1>
   <div class="header-right">
     <div class="alert-badge alert-overdue" id="alertOverdue" onclick="filterByAlert('overdue')">
       ⚠️ 期限超過 <strong id="overdueNum">0</strong>件
@@ -216,7 +216,7 @@ textarea.form-control{min-height:80px;resize:vertical}
 <!-- DASHBOARD -->
 <div class="dashboard">
   <div class="card card-total">
-    <h3>📊 全体サマリー</h3>
+    <h3>全体サマリー</h3>
     <div class="card-stat-row">
       <div class="card-stat"><div class="stat-label">総件数</div><div class="stat-value" id="totalCount">—</div></div>
       <div class="card-stat"><div class="stat-label">受注件数</div><div class="stat-value" id="totalReceivedCount">—</div></div>
@@ -308,7 +308,7 @@ textarea.form-control{min-height:80px;resize:vertical}
     <div class="action-btns">
       <button class="btn btn-success" onclick="openAddModal()">＋ 新規案件</button>
       <button class="btn btn-warning" onclick="openImportModal()">📤 CSVインポート</button>
-      <button class="btn btn-outline" onclick="openStatsModal()">📊 統計</button>
+      <button class="btn btn-outline" onclick="openStatsModal()">統計</button>
       <button class="btn btn-outline" onclick="exportCSV()">📥 CSV出力</button>
       <button class="btn btn-outline" onclick="manualRefresh()" title="今すぐ最新データを取得">🔄 手動更新</button>
     </div>
@@ -609,7 +609,7 @@ textarea.form-control{min-height:80px;resize:vertical}
 <div class="modal-overlay" id="statsModal">
   <div class="modal modal-wide">
     <div class="modal-header">
-      <h2>📊 統計・サマリー</h2>
+      <h2>統計・サマリー</h2>
       <button class="modal-close" onclick="closeModal('statsModal')">✕</button>
     </div>
     <div class="modal-body">
@@ -1134,19 +1134,19 @@ function openStatsModal() {
   });
   var rr=totalE>0?Math.round(recvE/totalE*100):0;
   var h='<div class="stats-grid">';
-  h+='<div class="stats-card"><h4>📁 部署別件数</h4>';
+  h+='<div class="stats-card"><h4>部署別件数</h4>';
   DALL.forEach(function(d){
     h+='<div class="stats-row"><span>'+d[1]+'</span><span class="stats-row-value">'+(dt[d[0]]||0)+'件 (受注'+(rc[d[0]]||0)+'件)</span></div>';
   });
-  h+='</div><div class="stats-card"><h4>📊 ステータス別件数</h4>';
+  h+='</div><div class="stats-card"><h4>ステータス別件数</h4>';
   ['引合','見積提出（高）','見積提出（低）','受注','逸注'].forEach(function(s){
     h+='<div class="stats-row"><span>'+s+'</span><span class="stats-row-value">'+(bs[s]||0)+'件</span></div>';
   });
-  h+='</div><div class="stats-card"><h4>🔥 優先度別件数</h4>';
+  h+='</div><div class="stats-card"><h4>優先度別件数</h4>';
   ['高','中','低'].forEach(function(p){
     h+='<div class="stats-row"><span>'+p+'</span><span class="stats-row-value">'+(bp[p]||0)+'件</span></div>';
   });
-  h+='</div><div class="stats-card"><h4>💰 金額サマリー</h4>';
+  h+='</div><div class="stats-card"><h4>金額サマリー</h4>';
   h+='<div class="stats-row"><span>総見積金額</span><span class="stats-row-value">'+Math.round(totalE).toLocaleString()+'千円</span></div>';
   h+='<div class="stats-row"><span>受注金額合計</span><span class="stats-row-value">'+Math.round(recvE).toLocaleString()+'千円</span></div>';
   h+='<div class="stats-row"><span>受注金額率</span><span class="stats-row-value">'+rr+'%</span></div>';
