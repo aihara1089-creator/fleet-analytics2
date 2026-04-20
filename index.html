@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>船事開 引合管理システム v3.0</title>
+<title>T-SOL 引合管理システム</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -198,7 +198,7 @@ textarea.form-control{min-height:80px;resize:vertical}
 
 <!-- HEADER -->
 <div class="header">
-  <h1>⚓ 船事開 引合管理システム <span class="version-badge">v3.0</span></h1>
+  <h1>⚓ T-SOL 引合管理システム <span class="version-badge">v3.0</span></h1>
   <div class="header-right">
     <div class="alert-badge alert-overdue" id="alertOverdue" onclick="filterByAlert('overdue')">
       ⚠️ 期限超過 <strong id="overdueNum">0</strong>件
@@ -285,11 +285,11 @@ textarea.form-control{min-height:80px;resize:vertical}
   <div class="ctrl-row">
     <div class="dept-btns">
       <button class="dept-btn active" onclick="setDept('all',this)">🌐 全部署</button>
+      <button class="dept-btn" onclick="setDept('sales',this)">営業部</button>
+      <button class="dept-btn" onclick="setDept('design',this)">設計部</button>
       <button class="dept-btn" onclick="setDept('ship_monitoring',this)">モニタリング</button>
       <button class="dept-btn" onclick="setDept('ship_control',this)">操船装置</button>
       <button class="dept-btn" onclick="setDept('ship_autonomous',this)">自律</button>
-      <button class="dept-btn" onclick="setDept('sales',this)">営業部</button>
-      <button class="dept-btn" onclick="setDept('design',this)">設計部</button>
       <button class="dept-btn" onclick="setDept('technology',this)">技術部</button>
     </div>
     <div class="search-wrap">
