@@ -129,6 +129,39 @@ app.post('/api/cases/bulk', async (req, res) => {
   }
 });
 
+// CSVインポート（一括登録）
+app.post('/api/cases/import', async (req, res) => {
+  try {
+    const { cases: importCases } = req.body;
+    if (!Array.isArray(importCases) || importCases.length === 0) {
+      return res.status(400).json({ ok: false, error: 'データが空です' });
+    }
+    const results = { success: 0, skip: 0, errors: [] };
+    for (const c of importCases) {
+      try {
+        c.id = await getNextId();
+        c.updateTime = now();
+        c.highlight = c.highlight || '';
+        c.isOverdue = false;
+        c.isLocked = false;
+        if (c.estimate) {
+          const v = parseFloat(String(c.estimate).replace(/,/g, ''));
+          c.estimate = isNaN(v) ? null : v;
+          c.estimateDisplay = isNaN(v) ? '' : Math.round(v).toLocaleString();
+        }
+        await Case.create(c);
+        results.success++;
+      } catch (err) {
+        results.errors.push({ row: c.projectName || '?', error: err.message });
+        results.skip++;
+      }
+    }
+    res.json({ ok: true, ...results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ハイライト更新
 app.patch('/api/cases/:id/highlight', async (req, res) => {
   try {

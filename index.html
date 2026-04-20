@@ -307,6 +307,7 @@ textarea.form-control{min-height:80px;resize:vertical}
     </div>
     <div class="action-btns">
       <button class="btn btn-success" onclick="openAddModal()">＋ 新規案件</button>
+      <button class="btn btn-warning" onclick="openImportModal()">📤 CSVインポート</button>
       <button class="btn btn-outline" onclick="openStatsModal()">📊 統計</button>
       <button class="btn btn-outline" onclick="exportCSV()">📥 CSV出力</button>
       <button class="btn btn-outline" onclick="manualRefresh()" title="今すぐ最新データを取得">🔄 手動更新</button>
@@ -524,6 +525,69 @@ textarea.form-control{min-height:80px;resize:vertical}
           <button type="submit" class="btn btn-primary" id="editSubmitBtn">💾 更新</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📤 CSVインポート</h2>
+      <button class="modal-close" onclick="closeModal('importModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px;padding:12px 16px;background:#fff8e1;border-left:4px solid #f39c12;border-radius:6px;font-size:13px;line-height:1.8">
+        <strong>📋 CSVファイルの形式：</strong><br>
+        1行目はヘッダー行（以下の列名を使用）<br>
+        <code style="background:#f1f1f1;padding:2px 6px;border-radius:4px;font-size:12px">dept, customer, projectName, estimate, status, priority, person, expectedDate, notes</code><br>
+        <br>
+        <strong>dept に入れる値：</strong>
+        <code>sales</code>（営業部）　<code>design</code>（設計部）　<code>technology</code>（技術部）　<code>ship_monitoring</code>（モニタリング）　<code>ship_control</code>（操船装置）　<code>ship_autonomous</code>（自律）<br>
+        <br>
+        <strong>status に入れる値：</strong>
+        <code>引合</code>　<code>見積提出（高）</code>　<code>見積提出（低）</code>　<code>受注</code>　<code>逸注</code><br>
+        <strong>priority：</strong><code>高</code>　<code>中</code>　<code>低</code>　　<strong>expectedDate：</strong><code>2026/06/30</code> または <code>2026-06-30</code>
+      </div>
+      <div style="margin-bottom:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn btn-outline" onclick="downloadTemplate()" style="font-size:12px">
+          ⬇️ テンプレートCSVをダウンロード
+        </button>
+        <span style="font-size:12px;color:var(--muted)">← まずこれをダウンロードしてExcelで編集するのがおすすめ</span>
+      </div>
+      <div style="margin-bottom:10px">
+        <label class="form-label">CSVファイルを選択</label>
+        <input type="file" id="importFileInput" accept=".csv" class="form-control" style="margin-top:6px" onchange="onImportFileChange(this)">
+      </div>
+      <div id="importPreview" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong id="importPreviewCount" style="font-size:14px"></strong>
+          <span style="font-size:12px;color:var(--muted)">内容を確認して「登録実行」をクリック</span>
+        </div>
+        <div style="overflow:auto;max-height:280px;border:1px solid #ddd;border-radius:6px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">
+            <thead>
+              <tr style="background:#f8f9fa;position:sticky;top:0">
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">#</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">部署</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">顧客名</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">案件名</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:right">見積額(千円)</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">ステータス</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">優先度</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">担当者</th>
+                <th style="padding:7px 10px;border-bottom:2px solid #ddd;text-align:left">受注予定日</th>
+              </tr>
+            </thead>
+            <tbody id="importPreviewTbody"></tbody>
+          </table>
+        </div>
+        <div id="importErrorBox" style="display:none;margin-top:8px;padding:10px;background:#fde8e8;border-radius:6px;font-size:12px;color:#c0392b"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('importModal')">キャンセル</button>
+        <button type="button" class="btn btn-warning" id="importExecBtn" style="display:none" onclick="execImport()">📤 登録実行</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1135,6 +1199,199 @@ function toast(msg, type, dur) {
     el.style.opacity='0'; el.style.transform='translateX(50px)'; el.style.transition='all .3s';
     setTimeout(function(){if(el.parentNode)ct.removeChild(el);},300);
   }, dur);
+}
+
+// ── CSVインポート ─────────────────────────────────────────────
+var importData = [];
+
+function openImportModal() {
+  document.getElementById('importModal').classList.add('active');
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importExecBtn').style.display = 'none';
+  importData = [];
+}
+
+function downloadTemplate() {
+  var rows = [
+    'dept,customer,projectName,estimate,status,priority,person,expectedDate,notes',
+    'sales,株式会社サンプル,新規提案案件,5000,引合,高,担当者名,2026/06/30,備考メモ',
+    'sales,ABC商事,システム導入提案,12000,見積提出（高）,中,田中,2026/07/31,',
+    'design,日本郵船,設計支援案件,8000,引合,中,鈴木,,',
+    'technology,商船三井,技術開発プロジェクト,20000,見積提出（高）,高,佐藤,2026/09/30,'
+  ];
+  var blob = new Blob(['\uFEFF' + rows.join('\n')], {type: 'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'import_template.csv';
+  a.click();
+}
+
+function onImportFileChange(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    // BOM除去
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    parseImportCSV(text);
+  };
+  // Shift-JIS対応
+  try { reader.readAsText(file, 'UTF-8'); } catch(e) { reader.readAsText(file); }
+}
+
+function parseImportCSV(text) {
+  var deptMap = {
+    'sales':'営業部','design':'設計部','technology':'技術部',
+    'ship_monitoring':'モニタリング','ship_control':'操船装置','ship_autonomous':'自律',
+    '営業部':'sales','設計部':'design','技術部':'technology',
+    'モニタリング':'ship_monitoring','操船装置':'ship_control','自律':'ship_autonomous'
+  };
+  var deptNameMap = {
+    'sales':'営業部','design':'設計部','technology':'技術部',
+    'ship_monitoring':'モニタリング','ship_control':'操船装置','ship_autonomous':'自律'
+  };
+
+  var lines = text.split(/\r?\n/).filter(function(l){return l.trim();});
+  if (lines.length < 2) { toast('データが1行もありません', 'error'); return; }
+
+  // ヘッダー解析
+  var headers = splitCSVLine(lines[0]).map(function(h){return h.trim().toLowerCase().replace(/\s/g,'');});
+
+  // 列インデックスを動的に取得
+  function col(name) { return headers.indexOf(name); }
+
+  var rows = [];
+  var errors = [];
+
+  for (var i = 1; i < lines.length; i++) {
+    var cells = splitCSVLine(lines[i]);
+    if (cells.every(function(c){return !c.trim();})) continue; // 空行スキップ
+
+    var deptRaw = (cells[col('dept')] || '').trim();
+    // 日本語部署名 → キーに変換
+    var deptKey = deptMap[deptRaw] || deptRaw;
+    // キーが英字でない場合はそのまま使う
+    if (!deptNameMap[deptKey]) {
+      // キーが日本語だったら再度変換試み
+      deptKey = deptMap[deptKey] || deptKey;
+    }
+    var deptName = deptNameMap[deptKey] || deptRaw;
+
+    var customer = (cells[col('customer')] || '').trim();
+    var projectName = (cells[col('projectname')] || cells[col('project_name')] || cells[col('案件名')] || '').trim();
+    var estimateRaw = (cells[col('estimate')] || cells[col('見積額')] || '').trim().replace(/,/g,'');
+    var estimate = estimateRaw ? (parseFloat(estimateRaw) || null) : null;
+    var status = (cells[col('status')] || cells[col('ステータス')] || '引合').trim() || '引合';
+    var priority = (cells[col('priority')] || cells[col('優先度')] || '中').trim() || '中';
+    var person = (cells[col('person')] || cells[col('担当者')] || '').trim();
+    var expectedDate = (cells[col('expecteddate')] || cells[col('expected_date')] || cells[col('受注予定日')] || '').trim().replace(/-/g,'/');
+    var notes = (cells[col('notes')] || cells[col('備考')] || '').trim();
+    var caseNo = (cells[col('caseno')] || cells[col('case_no')] || cells[col('案件no')] || '').trim();
+
+    if (!customer && !projectName) {
+      errors.push('行'+(i+1)+': 顧客名・案件名が空'); continue;
+    }
+
+    rows.push({
+      dept: deptKey, deptName: deptName, sheetName: deptName,
+      caseNo: caseNo, customer: customer, projectName: projectName,
+      estimate: estimate,
+      estimateDisplay: estimate ? Math.round(estimate).toLocaleString() : '',
+      status: status, priority: priority, person: person,
+      expectedDate: expectedDate, notes: notes,
+      highlight: '', isOverdue: false, daysUntilDue: null
+    });
+  }
+
+  importData = rows;
+  renderImportPreview(rows, errors);
+}
+
+function splitCSVLine(line) {
+  var result = [], cur = '', inQ = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      result.push(cur); cur = '';
+    } else cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function renderImportPreview(rows, errors) {
+  var deptNames = {
+    'sales':'営業部','design':'設計部','technology':'技術部',
+    'ship_monitoring':'モニタリング','ship_control':'操船装置','ship_autonomous':'自律'
+  };
+  var prev = document.getElementById('importPreview');
+  var tbody = document.getElementById('importPreviewTbody');
+  var errBox = document.getElementById('importErrorBox');
+
+  document.getElementById('importPreviewCount').textContent = rows.length + '件のデータが読み込まれました（登録前の確認）';
+  var html = '';
+  rows.forEach(function(r, i) {
+    html += '<tr style="border-bottom:1px solid #f0f0f0">';
+    html += '<td style="padding:5px 10px;color:var(--muted)">'+(i+1)+'</td>';
+    html += '<td style="padding:5px 10px"><span style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:11px">'+(deptNames[r.dept]||r.dept||'?')+'</span></td>';
+    html += '<td style="padding:5px 10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(r.customer)+'</td>';
+    html += '<td style="padding:5px 10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(r.projectName)+'</td>';
+    html += '<td style="padding:5px 10px;text-align:right">'+(r.estimate?r.estimate.toLocaleString():'')+'</td>';
+    html += '<td style="padding:5px 10px">'+E(r.status)+'</td>';
+    html += '<td style="padding:5px 10px">'+E(r.priority)+'</td>';
+    html += '<td style="padding:5px 10px">'+E(r.person)+'</td>';
+    html += '<td style="padding:5px 10px">'+E(r.expectedDate)+'</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--muted)">データなし</td></tr>';
+
+  if (errors.length > 0) {
+    errBox.style.display = 'block';
+    errBox.innerHTML = '⚠️ スキップされた行: ' + errors.join(' / ');
+  } else {
+    errBox.style.display = 'none';
+  }
+
+  prev.style.display = 'block';
+  document.getElementById('importExecBtn').style.display = rows.length > 0 ? 'inline-flex' : 'none';
+}
+
+function execImport() {
+  if (!importData || importData.length === 0) { toast('インポートデータがありません', 'warning'); return; }
+  if (!confirm(importData.length + '件の案件を登録しますか？\n（既存データは変更されません）')) return;
+
+  var btn = document.getElementById('importExecBtn');
+  btn.disabled = true; btn.textContent = '登録中...';
+  showLoading('CSVインポート中... 0 / ' + importData.length);
+
+  fetch(API + '/cases/import', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({cases: importData})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    hideLoading();
+    btn.disabled = false; btn.textContent = '📤 登録実行';
+    if (!data.ok) throw new Error(data.error || '失敗');
+    closeModal('importModal');
+    return loadCases(true);
+  })
+  .then(function() {
+    var msg = '✅ ' + importData.length + '件のインポートが完了しました';
+    toast(msg, 'success', 5000);
+    importData = [];
+  })
+  .catch(function(e) {
+    hideLoading();
+    btn.disabled = false; btn.textContent = '📤 登録実行';
+    toast('インポート失敗: ' + e.message, 'error');
+  });
 }
 
 // ── ユーティリティ ────────────────────────────────────────────
