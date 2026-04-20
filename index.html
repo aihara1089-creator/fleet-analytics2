@@ -251,6 +251,33 @@ textarea.form-control{min-height:80px;resize:vertical}
     </div>
     <div class="prog-wrap"><div class="prog" id="autProg" style="width:0%"></div></div>
   </div>
+  <div class="card">
+    <h3>営業部</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="salCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="salReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="salAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="salProg" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <h3>設計部</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="desCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="desReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="desAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="desProg" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <h3>技術部</h3>
+    <div class="card-stat-row">
+      <div class="card-stat"><div class="stat-label">件数</div><div class="stat-value" id="tecCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">受注</div><div class="stat-value" id="tecReceivedCount">—</div></div>
+      <div class="card-stat"><div class="stat-label">金額(千円)</div><div class="stat-value" id="tecAmount">—</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog" id="tecProg" style="width:0%"></div></div>
+  </div>
 </div>
 
 <!-- CONTROL PANEL -->
@@ -261,6 +288,9 @@ textarea.form-control{min-height:80px;resize:vertical}
       <button class="dept-btn" onclick="setDept('ship_monitoring',this)">モニタリング</button>
       <button class="dept-btn" onclick="setDept('ship_control',this)">操船装置</button>
       <button class="dept-btn" onclick="setDept('ship_autonomous',this)">自律</button>
+      <button class="dept-btn" onclick="setDept('sales',this)">営業部</button>
+      <button class="dept-btn" onclick="setDept('design',this)">設計部</button>
+      <button class="dept-btn" onclick="setDept('technology',this)">技術部</button>
     </div>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -359,6 +389,9 @@ textarea.form-control{min-height:80px;resize:vertical}
               <option value="ship_monitoring">モニタリング</option>
               <option value="ship_control">操船装置</option>
               <option value="ship_autonomous">自律</option>
+              <option value="sales">営業部</option>
+              <option value="design">設計部</option>
+              <option value="technology">技術部</option>
             </select>
           </div>
           <div class="form-group">
@@ -434,6 +467,9 @@ textarea.form-control{min-height:80px;resize:vertical}
               <option value="ship_monitoring">モニタリング</option>
               <option value="ship_control">操船装置</option>
               <option value="ship_autonomous">自律</option>
+              <option value="sales">営業部</option>
+              <option value="design">設計部</option>
+              <option value="technology">技術部</option>
             </select>
           </div>
           <div class="form-group">
@@ -619,25 +655,30 @@ function recalcDates() {
 
 // ── ダッシュボード ────────────────────────────────────────────
 function updateDashboard() {
-  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0};
-  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0};
-  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var DEPTS=['ship_monitoring','ship_control','ship_autonomous','sales','design','technology'];
+  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
+  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
+  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
   var od=0, nd=0;
   APP.allCases.forEach(function(c) {
     if (dt.hasOwnProperty(c.dept)) dt[c.dept]++;
-    if (c.status === '受注') { rc[c.dept]++; am[c.dept] += (parseFloat(c.estimate)||0); }
+    else dt[c.dept]=1; // 未知部署も集計
+    if (c.status === '受注') {
+      if(rc.hasOwnProperty(c.dept)) rc[c.dept]++; else rc[c.dept]=1;
+      if(am.hasOwnProperty(c.dept)) am[c.dept]+=(parseFloat(c.estimate)||0); else am[c.dept]=(parseFloat(c.estimate)||0);
+    }
     if (c.isOverdue) od++;
     else if (c.daysUntilDue !== null && c.daysUntilDue <= 7) nd++;
   });
   var tot=APP.allCases.length;
-  var trc=rc.ship_monitoring+rc.ship_control+rc.ship_autonomous;
-  var tra=am.ship_monitoring+am.ship_control+am.ship_autonomous;
+  var trc=DEPTS.reduce(function(s,k){return s+(rc[k]||0);},0);
+  var tra=DEPTS.reduce(function(s,k){return s+(am[k]||0);},0);
   var rate=tot>0?Math.round(trc/tot*100):0;
   setText('totalCount', tot+'件');
   setText('totalReceivedCount', trc+'件');
   setText('totalReceivedAmount', Math.round(tra).toLocaleString());
   setSW('totalProg', rate+'%');
-  [['ship_monitoring','mon'],['ship_control','ctl'],['ship_autonomous','aut']].forEach(function(x) {
+  [['ship_monitoring','mon'],['ship_control','ctl'],['ship_autonomous','aut'],['sales','sal'],['design','des'],['technology','tec']].forEach(function(x) {
     var t=dt[x[0]]||0, r=rc[x[0]]||0, a=am[x[0]]||0;
     var rt=t>0?Math.round(r/t*100):0;
     setText(x[1]+'Count', t+'件');
@@ -887,8 +928,8 @@ function openAddModal(){
 function submitAdd(event) {
   event.preventDefault();
   var dept=document.getElementById('aDept').value;
-  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'};
-  var pfx={ship_monitoring:'MON',ship_control:'CTL',ship_autonomous:'AUT'};
+  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律',sales:'営業部',design:'設計部',technology:'技術部'};
+  var pfx={ship_monitoring:'MON',ship_control:'CTL',ship_autonomous:'AUT',sales:'SAL',design:'DES',technology:'TEC'};
   var yr=new Date().getFullYear();
   var cNo=document.getElementById('aCaseNo').value||(pfx[dept]+'-'+yr+'-'+String(APP.nextId).padStart(4,'0'));
   var estRaw=document.getElementById('aEstimate').value.replace(/,/g,'');
@@ -942,7 +983,7 @@ function submitEdit(event) {
   event.preventDefault();
   var id=parseInt(document.getElementById('eId').value,10);
   var dept=document.getElementById('eDept').value;
-  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'};
+  var dN={ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律',sales:'営業部',design:'設計部',technology:'技術部'};
   var estRaw=document.getElementById('eEstimate').value.replace(/,/g,'');
   var body={
     dept:dept, deptName:dN[dept]||dept, sheetName:dN[dept]||dept,
@@ -1012,13 +1053,17 @@ function openNotes(gi) {
 function openStatsModal() {
   document.getElementById('statsModal').classList.add('active');
   var cases=APP.allCases;
-  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0};
-  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0};
-  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0};
+  var DALL=[['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律'],['sales','営業部'],['design','設計部'],['technology','技術部']];
+  var dt={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
+  var rc={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
+  var am={ship_monitoring:0,ship_control:0,ship_autonomous:0,sales:0,design:0,technology:0};
   var bs={},bp={},totalE=0,recvE=0;
   cases.forEach(function(c){
-    if(dt.hasOwnProperty(c.dept)) dt[c.dept]++;
-    if(c.status==='受注'){rc[c.dept]++;am[c.dept]+=(parseFloat(c.estimate)||0);}
+    if(dt.hasOwnProperty(c.dept)) dt[c.dept]++; else dt[c.dept]=1;
+    if(c.status==='受注'){
+      if(rc.hasOwnProperty(c.dept)) rc[c.dept]++; else rc[c.dept]=1;
+      if(am.hasOwnProperty(c.dept)) am[c.dept]+=(parseFloat(c.estimate)||0); else am[c.dept]=(parseFloat(c.estimate)||0);
+    }
     bs[c.status]=(bs[c.status]||0)+1;
     bp[c.priority||'中']=(bp[c.priority||'中']||0)+1;
     if(c.estimate){var v=parseFloat(c.estimate);if(!isNaN(v)){totalE+=v;if(c.status==='受注')recvE+=v;}}
@@ -1026,7 +1071,7 @@ function openStatsModal() {
   var rr=totalE>0?Math.round(recvE/totalE*100):0;
   var h='<div class="stats-grid">';
   h+='<div class="stats-card"><h4>📁 部署別件数</h4>';
-  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d){
+  DALL.forEach(function(d){
     h+='<div class="stats-row"><span>'+d[1]+'</span><span class="stats-row-value">'+(dt[d[0]]||0)+'件 (受注'+(rc[d[0]]||0)+'件)</span></div>';
   });
   h+='</div><div class="stats-card"><h4>📊 ステータス別件数</h4>';
@@ -1041,7 +1086,7 @@ function openStatsModal() {
   h+='<div class="stats-row"><span>総見積金額</span><span class="stats-row-value">'+Math.round(totalE).toLocaleString()+'千円</span></div>';
   h+='<div class="stats-row"><span>受注金額合計</span><span class="stats-row-value">'+Math.round(recvE).toLocaleString()+'千円</span></div>';
   h+='<div class="stats-row"><span>受注金額率</span><span class="stats-row-value">'+rr+'%</span></div>';
-  [['ship_monitoring','モニタリング'],['ship_control','操船装置'],['ship_autonomous','自律']].forEach(function(d){
+  DALL.forEach(function(d){
     h+='<div class="stats-row"><span> '+d[1]+'受注</span><span class="stats-row-value">'+Math.round(am[d[0]]||0).toLocaleString()+'千円</span></div>';
   });
   h+='</div></div>';
@@ -1095,7 +1140,7 @@ function toast(msg, type, dur) {
 // ── ユーティリティ ────────────────────────────────────────────
 function setText(id,t){var el=document.getElementById(id);if(el)el.textContent=t;}
 function setSW(id,w){var el=document.getElementById(id);if(el)el.style.width=w;}
-function getDN(k){return{ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律'}[k]||k;}
+function getDN(k){return{ship_monitoring:'モニタリング',ship_control:'操船装置',ship_autonomous:'自律',sales:'営業部',design:'設計部',technology:'技術部'}[k]||k;}
 function E(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fmtEst(el){var v=el.value.replace(/,/g,'').replace(/[^0-9]/g,'');el.value=v?parseInt(v,10).toLocaleString():'';}
 
