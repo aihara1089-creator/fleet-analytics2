@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MOL 船舶管理リスト — 新造船 工事予定ダッシュボード</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,6 +14,9 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS (Excel読み込み用) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- App CSS -->
   <link rel="stylesheet" href="css/style.css" />
@@ -39,15 +43,32 @@
 <!-- ===== UPLOAD SECTION ===== -->
 <section class="upload-section" id="uploadSection">
   <div class="upload-card" id="dropZone">
-    <div class="upload-icon"><i class="fas fa-file-csv"></i></div>
-    <h2>CSVファイルをインポート</h2>
-    <p>船舶管理リストのCSVをドラッグ＆ドロップ、または選択してください</p>
+    <div class="upload-icon"><i class="fas fa-file-excel"></i></div>
+    <h2>ファイルをインポート</h2>
+    <p>船舶管理リストのExcel・CSVをドラッグ＆ドロップ、または選択してください</p>
     <label class="btn-upload" for="csvInput">
       <i class="fas fa-folder-open"></i> ファイルを選択
     </label>
-    <input type="file" id="csvInput" accept=".csv" hidden />
-    <p class="upload-hint">対応形式：CSV（UTF-8 / Shift-JIS）</p>
+    <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
+    <p class="upload-hint">対応形式：Excel（.xlsx / .xls）・CSV（UTF-8 / Shift-JIS）<br>
+      <span style="font-size:.78rem;color:var(--slate-400);">※ 日本語列名・英語列名どちらにも対応</span>
+    </p>
+    <div class="upload-user-row">
+      <label for="userName" style="font-size:.85rem;color:var(--slate-500);margin-right:6px;"><i class="fas fa-user"></i> あなたの名前（共有表示用）：</label>
+      <input type="text" id="userName" placeholder="例：田中" maxlength="20"
+        style="border:1px solid var(--slate-300);border-radius:6px;padding:4px 10px;font-size:.85rem;width:130px;" />
+    </div>
     <button class="btn-sample" id="btnSample"><i class="fas fa-flask"></i> サンプルデータで試す</button>
+    <div id="localRestoreArea" style="display:none;margin-top:14px;padding:12px 16px;background:var(--amber-50,#fffbeb);border:1px solid var(--amber-300,#fcd34d);border-radius:8px;text-align:left;">
+      <p style="margin:0 0 8px;font-size:.9rem;font-weight:600;color:var(--amber-700,#b45309);">
+        <i class="fas fa-database"></i> ブラウザに保存された受注状態データが見つかりました
+      </p>
+      <p style="margin:0 0 10px;font-size:.82rem;color:var(--slate-600);" id="localRestoreCount"></p>
+      <button id="btnRestoreToServer" class="btn-sample" style="background:var(--amber-500,#f59e0b);color:#fff;border-color:var(--amber-500,#f59e0b);margin-right:8px;">
+        <i class="fas fa-cloud-upload-alt"></i> サーバーに復元する
+      </button>
+      <button id="btnIgnoreLocal" style="background:none;border:none;color:var(--slate-400);font-size:.8rem;cursor:pointer;text-decoration:underline;">無視する</button>
+    </div>
   </div>
 </section>
 
@@ -98,6 +119,13 @@
         <div class="kpi-label">受注済み</div>
       </div>
     </div>
+    <div class="kpi-card" id="kpiNotBoarded">
+      <div class="kpi-icon slate"><i class="fas fa-ban"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="kpiNotBoardedVal">0</div>
+        <div class="kpi-label">非搭載</div>
+      </div>
+    </div>
   </section>
 
   <!-- Timeline Alert Banner -->
@@ -130,6 +158,11 @@
       </div>
     </div>
   </section>
+
+  <!-- 船種タブバー -->
+  <div class="type-tab-bar-wrap">
+    <div class="type-tab-bar" id="typeTabBar"></div>
+  </div>
 
   <!-- Timeline Gantt -->
   <section class="gantt-section">
@@ -170,6 +203,27 @@
     <div class="gantt-container" id="ganttContainer">
       <p class="empty-msg">データがありません</p>
     </div>
+  </section>
+
+  <!-- 受注状態管理パネル -->
+  <section class="osp-section">
+    <div class="osp-header">
+      <div class="osp-header-left">
+        <h2><i class="fas fa-handshake"></i> 受注状態管理
+          <span class="osp-header-sub">船ごとに見積提出済み・受注済みを設定できます（ブラウザに自動保存）</span>
+        </h2>
+      </div>
+      <div class="osp-header-actions">
+        <label class="btn-action btn-merge" for="mergeInput" title="既存データに追記モードで読み込む">
+          <i class="fas fa-code-merge"></i> 追記読込
+        </label>
+        <input type="file" id="mergeInput" accept=".csv,.xlsx,.xls" hidden />
+        <button class="btn-action osp-toggle-btn" id="ospToggleBtn">
+          <i class="fas fa-list-check"></i> 受注状態を管理する
+        </button>
+      </div>
+    </div>
+    <div id="orderStatusPanel" class="hidden"></div>
   </section>
 
   <!-- Controls -->
@@ -228,6 +282,29 @@
           </div>
         </div>
       </div>
+      <!-- 造船所 -->
+      <div class="mdd-wrap" id="mddBuilder">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddBuilderLabel">造船所</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddBuilderMenu">
+          <div class="mdd-search-wrap"><i class="fas fa-search"></i><input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" /></div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddBuilderList"></div>
+        </div>
+      </div>
+      <!-- 担当者 -->
+      <div class="mdd-wrap" id="mddAssignee">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddAssigneeLabel">担当者</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddAssigneeMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddAssigneeList"></div>
+        </div>
+      </div>
       <!-- 受注状態 -->
       <div class="mdd-wrap" id="mddOrderStatus">
         <button class="mdd-btn" type="button">
@@ -283,6 +360,40 @@
       </table>
     </div>
     <div class="pagination" id="pagination"></div>
+  </section>
+
+  <!-- 変更履歴ログパネル -->
+  <section class="change-log-section">
+    <div class="cl-header">
+      <button class="btn-action cl-toggle-btn" id="clToggleBtn">
+        <i class="fas fa-history"></i> 変更履歴
+        <span class="cl-badge" id="changeLogCount">0</span>
+      </button>
+      <div class="cl-header-actions hidden" id="clHeaderActions">
+        <button class="btn-action btn-secondary" id="clExportBtn" style="font-size:.78rem;padding:4px 12px;">
+          <i class="fas fa-download"></i> CSV出力
+        </button>
+        <button class="btn-action btn-danger" id="clClearBtn" style="font-size:.78rem;padding:4px 12px;">
+          <i class="fas fa-trash"></i> 履歴をクリア
+        </button>
+      </div>
+    </div>
+    <div class="change-log-panel hidden" id="changeLogPanel">
+      <div class="cl-table-wrap">
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th class="cl-th-ts">日時</th>
+              <th class="cl-th-by">担当者</th>
+              <th class="cl-th-vessel">船名</th>
+              <th class="cl-th-field">項目</th>
+              <th class="cl-th-change">変更内容</th>
+            </tr>
+          </thead>
+          <tbody id="changeLogBody"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- Back to upload -->
