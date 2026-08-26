@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MOL 船舶管理リスト — 新造船 工事予定ダッシュボード</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,6 +14,9 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS (Excel読み込み用) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- App CSS -->
   <link rel="stylesheet" href="css/style.css" />
@@ -29,6 +33,15 @@
         <span class="brand-sub">新造船 工事予定ダッシュボード</span>
       </div>
     </div>
+    <!-- ページナビタブ -->
+    <nav class="page-nav" id="pageNav">
+      <button class="page-nav-btn active" id="navShiplist" data-page="shiplist">
+        <i class="fas fa-ship"></i> 新造船スケジュール
+      </button>
+      <button class="page-nav-btn" id="navFt" data-page="ft">
+        <i class="fas fa-network-wired"></i> FT搭載船リスト
+      </button>
+    </nav>
     <div class="header-meta" id="headerMeta">
       <span class="meta-badge" id="totalCount"><i class="fas fa-ship"></i> — 隻</span>
       <span class="meta-badge meta-date" id="lastUpdated"><i class="fas fa-clock"></i> 未読込</span>
@@ -39,15 +52,32 @@
 <!-- ===== UPLOAD SECTION ===== -->
 <section class="upload-section" id="uploadSection">
   <div class="upload-card" id="dropZone">
-    <div class="upload-icon"><i class="fas fa-file-csv"></i></div>
-    <h2>CSVファイルをインポート</h2>
-    <p>船舶管理リストのCSVをドラッグ＆ドロップ、または選択してください</p>
+    <div class="upload-icon"><i class="fas fa-file-excel"></i></div>
+    <h2>ファイルをインポート</h2>
+    <p>船舶管理リストのExcel・CSVをドラッグ＆ドロップ、または選択してください</p>
     <label class="btn-upload" for="csvInput">
       <i class="fas fa-folder-open"></i> ファイルを選択
     </label>
-    <input type="file" id="csvInput" accept=".csv" hidden />
-    <p class="upload-hint">対応形式：CSV（UTF-8 / Shift-JIS）</p>
+    <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" hidden />
+    <p class="upload-hint">対応形式：Excel（.xlsx / .xls）・CSV（UTF-8 / Shift-JIS）<br>
+      <span style="font-size:.78rem;color:var(--slate-400);">※ 日本語列名・英語列名どちらにも対応</span>
+    </p>
+    <div class="upload-user-row">
+      <label for="userName" style="font-size:.85rem;color:var(--slate-500);margin-right:6px;"><i class="fas fa-user"></i> あなたの名前（共有表示用）：</label>
+      <input type="text" id="userName" placeholder="例：田中" maxlength="20"
+        style="border:1px solid var(--slate-300);border-radius:6px;padding:4px 10px;font-size:.85rem;width:130px;" />
+    </div>
     <button class="btn-sample" id="btnSample"><i class="fas fa-flask"></i> サンプルデータで試す</button>
+    <div id="localRestoreArea" style="display:none;margin-top:14px;padding:12px 16px;background:var(--amber-50,#fffbeb);border:1px solid var(--amber-300,#fcd34d);border-radius:8px;text-align:left;">
+      <p style="margin:0 0 8px;font-size:.9rem;font-weight:600;color:var(--amber-700,#b45309);">
+        <i class="fas fa-database"></i> ブラウザに保存された受注状態データが見つかりました
+      </p>
+      <p style="margin:0 0 10px;font-size:.82rem;color:var(--slate-600);" id="localRestoreCount"></p>
+      <button id="btnRestoreToServer" class="btn-sample" style="background:var(--amber-500,#f59e0b);color:#fff;border-color:var(--amber-500,#f59e0b);margin-right:8px;">
+        <i class="fas fa-cloud-upload-alt"></i> サーバーに復元する
+      </button>
+      <button id="btnIgnoreLocal" style="background:none;border:none;color:var(--slate-400);font-size:.8rem;cursor:pointer;text-decoration:underline;">無視する</button>
+    </div>
   </div>
 </section>
 
@@ -98,6 +128,13 @@
         <div class="kpi-label">受注済み</div>
       </div>
     </div>
+    <div class="kpi-card" id="kpiNotBoarded">
+      <div class="kpi-icon slate"><i class="fas fa-ban"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="kpiNotBoardedVal">0</div>
+        <div class="kpi-label">非搭載</div>
+      </div>
+    </div>
   </section>
 
   <!-- Timeline Alert Banner -->
@@ -130,6 +167,11 @@
       </div>
     </div>
   </section>
+
+  <!-- 船種タブバー -->
+  <div class="type-tab-bar-wrap">
+    <div class="type-tab-bar" id="typeTabBar"></div>
+  </div>
 
   <!-- Timeline Gantt -->
   <section class="gantt-section">
@@ -170,6 +212,27 @@
     <div class="gantt-container" id="ganttContainer">
       <p class="empty-msg">データがありません</p>
     </div>
+  </section>
+
+  <!-- 受注状態管理パネル -->
+  <section class="osp-section">
+    <div class="osp-header">
+      <div class="osp-header-left">
+        <h2><i class="fas fa-handshake"></i> 受注状態管理
+          <span class="osp-header-sub">船ごとに見積提出済み・受注済みを設定できます（ブラウザに自動保存）</span>
+        </h2>
+      </div>
+      <div class="osp-header-actions">
+        <label class="btn-action btn-merge" for="mergeInput" title="既存データに追記モードで読み込む">
+          <i class="fas fa-code-merge"></i> 追記読込
+        </label>
+        <input type="file" id="mergeInput" accept=".csv,.xlsx,.xls" hidden />
+        <button class="btn-action osp-toggle-btn" id="ospToggleBtn">
+          <i class="fas fa-list-check"></i> 受注状態を管理する
+        </button>
+      </div>
+    </div>
+    <div id="orderStatusPanel" class="hidden"></div>
   </section>
 
   <!-- Controls -->
@@ -226,6 +289,41 @@
             <label class="mdd-item"><input type="checkbox" value="upcoming180" /> 工事予定 180日以内</label>
             <label class="mdd-item"><input type="checkbox" value="delivery90"  /> 引渡 90日以内</label>
           </div>
+        </div>
+      </div>
+      <!-- 造船所 -->
+      <div class="mdd-wrap" id="mddBuilder">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddBuilderLabel">造船所</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddBuilderMenu">
+          <div class="mdd-search-wrap"><i class="fas fa-search"></i><input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" /></div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddBuilderList"></div>
+        </div>
+      </div>
+      <!-- 担当者 -->
+      <div class="mdd-wrap" id="mddAssignee">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddAssigneeLabel">担当者</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddAssigneeMenu">
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddAssigneeList"></div>
+        </div>
+      </div>
+      <!-- 船舶管理会社 -->
+      <div class="mdd-wrap" id="mddShipMgmt">
+        <button class="mdd-btn" type="button">
+          <span class="mdd-label" id="mddShipMgmtLabel">船舶管理会社</span>
+          <i class="fas fa-chevron-down mdd-arrow"></i>
+        </button>
+        <div class="mdd-dropdown hidden" id="mddShipMgmtMenu">
+          <div class="mdd-search-wrap"><i class="fas fa-search"></i><input type="text" class="mdd-search" placeholder="絞り込み…" autocomplete="off" /></div>
+          <label class="mdd-item mdd-all"><input type="checkbox" value="__all__" checked /> すべて選択</label>
+          <div class="mdd-list" id="mddShipMgmtList"></div>
         </div>
       </div>
       <!-- 受注状態 -->
@@ -285,6 +383,40 @@
     <div class="pagination" id="pagination"></div>
   </section>
 
+  <!-- 変更履歴ログパネル -->
+  <section class="change-log-section">
+    <div class="cl-header">
+      <button class="btn-action cl-toggle-btn" id="clToggleBtn">
+        <i class="fas fa-history"></i> 変更履歴
+        <span class="cl-badge" id="changeLogCount">0</span>
+      </button>
+      <div class="cl-header-actions hidden" id="clHeaderActions">
+        <button class="btn-action btn-secondary" id="clExportBtn" style="font-size:.78rem;padding:4px 12px;">
+          <i class="fas fa-download"></i> CSV出力
+        </button>
+        <button class="btn-action btn-danger" id="clClearBtn" style="font-size:.78rem;padding:4px 12px;">
+          <i class="fas fa-trash"></i> 履歴をクリア
+        </button>
+      </div>
+    </div>
+    <div class="change-log-panel hidden" id="changeLogPanel">
+      <div class="cl-table-wrap">
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th class="cl-th-ts">日時</th>
+              <th class="cl-th-by">担当者</th>
+              <th class="cl-th-vessel">船名</th>
+              <th class="cl-th-field">項目</th>
+              <th class="cl-th-change">変更内容</th>
+            </tr>
+          </thead>
+          <tbody id="changeLogBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- Back to upload -->
   <div class="back-bar">
     <button class="btn-back" id="btnBack"><i class="fas fa-arrow-left"></i> 別ファイルを読み込む</button>
@@ -303,7 +435,210 @@
 <!-- ===== TOAST ===== -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ===== FT搭載船リスト ===== -->
+<div class="ft-page hidden" id="ftPage">
+
+  <!-- FT アップロードエリア -->
+  <section class="ft-upload-section" id="ftUploadSection">
+    <div class="ft-upload-card" id="ftDropZone">
+      <div class="upload-icon"><i class="fas fa-file-excel" style="color:#10b981"></i></div>
+      <p class="upload-title">FleetTransfer 管理表を読み込む</p>
+      <p class="upload-subtitle">「FleetTransfer管理表_MOL殿向け.xlsx」をドロップ</p>
+      <label class="btn-upload" for="ftFileInput" style="background:linear-gradient(135deg,#10b981,#059669)">
+        <i class="fas fa-folder-open"></i> ファイルを選択
+      </label>
+      <input type="file" id="ftFileInput" accept=".xlsx,.xls" style="display:none" />
+      <p class="upload-hint">対応形式：Excel（.xlsx / .xls）</p>
+    </div>
+  </section>
+
+  <!-- FT ダッシュボード -->
+  <div class="ft-dashboard hidden" id="ftDashboard">
+
+    <!-- KPIバー -->
+    <div class="ft-kpi-bar">
+      <div class="ft-kpi-card">
+        <div class="ft-kpi-icon" style="background:#e0f2fe"><i class="fas fa-server" style="color:#0284c7"></i></div>
+        <div>
+          <div class="ft-kpi-val" id="ftKpiTotal">—</div>
+          <div class="ft-kpi-label">総搭載隻数</div>
+        </div>
+      </div>
+      <div class="ft-kpi-card">
+        <div class="ft-kpi-icon" style="background:#fef3c7"><i class="fas fa-windows" style="color:#d97706"></i></div>
+        <div>
+          <div class="ft-kpi-val" id="ftKpiWin7">—</div>
+          <div class="ft-kpi-label">Windows 7</div>
+        </div>
+      </div>
+      <div class="ft-kpi-card">
+        <div class="ft-kpi-icon" style="background:#d1fae5"><i class="fas fa-windows" style="color:#059669"></i></div>
+        <div>
+          <div class="ft-kpi-val" id="ftKpiWin10">—</div>
+          <div class="ft-kpi-label">Windows 10</div>
+        </div>
+      </div>
+      <div class="ft-kpi-card">
+        <div class="ft-kpi-icon" style="background:#ede9fe"><i class="fas fa-calendar-check" style="color:#7c3aed"></i></div>
+        <div>
+          <div class="ft-kpi-val" id="ftKpiScheduled">—</div>
+          <div class="ft-kpi-label">搭載予定</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 検索・フィルターバー -->
+    <div class="ft-controls-bar">
+      <div class="ft-search-wrap">
+        <i class="fas fa-search ft-search-icon"></i>
+        <input type="text" id="ftSearchInput" class="ft-search-input" placeholder="船名・Serial No. で検索…" />
+      </div>
+      <div class="ft-filter-group">
+        <!-- OSフィルター -->
+        <div class="ft-filter-btns" id="ftOsFilter">
+          <button class="ft-filter-btn active" data-os="all">すべて</button>
+          <button class="ft-filter-btn" data-os="Windows7">
+            <i class="fas fa-windows"></i> Win 7
+          </button>
+          <button class="ft-filter-btn" data-os="Windows10">
+            <i class="fas fa-windows"></i> Win 10
+          </button>
+        </div>
+        <!-- ソースフィルター -->
+        <div class="ft-filter-btns ft-source-filter" id="ftSourceFilter">
+          <button class="ft-filter-btn active" data-src="all">全ソース</button>
+          <button class="ft-filter-btn" data-src="excel">
+            <i class="fas fa-file-excel"></i> Excel
+          </button>
+          <button class="ft-filter-btn ft-filter-btn-auto" data-src="auto">
+            <i class="fas fa-link"></i> 受注連動
+          </button>
+          <button class="ft-filter-btn" data-src="scheduled">
+            <i class="fas fa-clock"></i> 搭載予定
+          </button>
+          <button class="ft-filter-btn ft-filter-btn-edited" data-src="edited">
+            <i class="fas fa-pen"></i> 編集済
+          </button>
+        </div>
+      </div>
+      <div class="ft-action-group">
+        <button class="btn-action" id="ftBtnExport"><i class="fas fa-download"></i> CSV出力</button>
+        <button class="btn-action btn-secondary" id="ftBtnBack"><i class="fas fa-arrow-left"></i> 別ファイル</button>
+      </div>
+    </div>
+
+    <!-- テーブル情報バー -->
+    <div class="ft-table-info-bar">
+      <span id="ftTableCount">0 件表示</span>
+    </div>
+
+    <!-- テーブル -->
+    <div class="ft-table-wrap">
+      <table class="ft-table" id="ftTable">
+        <thead>
+          <tr>
+            <th class="ft-th-no">No.</th>
+            <th class="ft-th-name">船名</th>
+            <th class="ft-th-serial">Serial No.</th>
+            <th class="ft-th-os">OS</th>
+            <th class="ft-th-date">FT搭載日</th>
+            <th class="ft-th-note">備考</th>
+            <th class="ft-th-action">編集</th>
+          </tr>
+        </thead>
+        <tbody id="ftTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ページネーション -->
+    <div class="ft-pagination" id="ftPagination"></div>
+
+  </div><!-- /ft-dashboard -->
+</div><!-- /ft-page -->
+
+<!-- ===== FT 編集モーダル ===== -->
+<div class="ft-edit-overlay hidden" id="ftEditOverlay">
+  <div class="ft-edit-modal">
+    <!-- ヘッダー -->
+    <div class="ft-edit-modal-header">
+      <div class="ft-edit-header-left">
+        <div class="ft-edit-icon"><i class="fas fa-pen"></i></div>
+        <div>
+          <div class="ft-edit-vessel-name">—</div>
+          <div class="ft-edit-source-info"></div>
+        </div>
+      </div>
+      <button class="ft-edit-close-btn" id="ftEditClose" title="閉じる">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <!-- ボディ -->
+    <div class="ft-edit-modal-body">
+      <div class="ft-edit-field">
+        <label class="ft-edit-label" for="ftEditSerial">
+          <i class="fas fa-barcode"></i> Serial No.
+        </label>
+        <input type="text" id="ftEditSerial" class="ft-edit-input"
+          placeholder="例：SN-20250101" />
+      </div>
+      <div class="ft-edit-field">
+        <label class="ft-edit-label" for="ftEditDate">
+          <i class="fas fa-calendar-alt"></i> FT搭載日
+        </label>
+        <input type="text" id="ftEditDate" class="ft-edit-input"
+          placeholder="例：2025/04/15 または 2025/04予定" />
+        <p class="ft-edit-hint">「予定」を含む場合は自動で搭載予定フラグが付きます</p>
+      </div>
+      <div class="ft-edit-field">
+        <label class="ft-edit-label" for="ftEditOs">
+          <i class="fas fa-windows"></i> OS
+        </label>
+        <select id="ftEditOs" class="ft-edit-select">
+          <option value="Windows7">Windows 7</option>
+          <option value="Windows10" selected>Windows 10</option>
+          <option value="Windows11">Windows 11</option>
+        </select>
+      </div>
+      <div class="ft-edit-field">
+        <label class="ft-edit-label" for="ftEditNote">
+          <i class="fas fa-sticky-note"></i> 備考
+        </label>
+        <textarea id="ftEditNote" class="ft-edit-textarea"
+          rows="3" placeholder="備考・メモを入力…"></textarea>
+      </div>
+      <div class="ft-edit-field">
+        <label class="ft-edit-label">
+          <i class="fas fa-clock"></i> 搭載予定バッジ
+        </label>
+        <label class="ft-edit-toggle-wrap">
+          <input type="checkbox" id="ftEditScheduled" class="ft-edit-toggle-input" />
+          <span class="ft-edit-toggle-track">
+            <span class="ft-edit-toggle-thumb"></span>
+          </span>
+          <span class="ft-edit-toggle-label" id="ftEditScheduledLabel">搭載予定</span>
+        </label>
+        <p class="ft-edit-hint">ONにすると「予定」バッジが表示されます。搭載済みにするにはOFFにしてください。</p>
+      </div>
+    </div>
+    <!-- フッター -->
+    <div class="ft-edit-modal-footer">
+      <button class="ft-edit-reset-btn" id="ftEditReset">
+        <i class="fas fa-undo"></i> 編集をリセット
+      </button>
+      <div class="ft-edit-footer-right">
+        <button class="ft-edit-cancel-btn" id="ftEditClose2">
+          キャンセル
+        </button>
+        <button class="ft-edit-save-btn" id="ftEditSave">
+          <i class="fas fa-save"></i> 保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- App JS -->
 <script src="js/app.js"></script>
+<script src="js/ft.js"></script>
 </body>
 </html>
